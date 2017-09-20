@@ -1073,7 +1073,7 @@ public:
       }
    }
 
-//#define DECENTGO
+#define DECENTGO
 
    signed_transaction create_account_with_private_key(fc::ecc::private_key owner_privkey,
                                                       string account_name,

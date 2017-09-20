@@ -129,8 +129,8 @@ int main( int argc, char** argv )
       ac_transfer.rotation_interval    = fc::hours( 1 );
       ac_transfer.rotation_limit       = fc::days( 1 );
 
-//    cfg.appenders.push_back(fc::appender_config( "default", "console", fc::variant(ac_default)));
-//    cfg.appenders.push_back(fc::appender_config( "rpc", "file", fc::variant(ac_rpc)));
+    cfg.appenders.push_back(fc::appender_config( "default", "console", fc::variant(ac_default)));
+    cfg.appenders.push_back(fc::appender_config( "rpc", "file", fc::variant(ac_rpc)));
       cfg.appenders.push_back(fc::appender_config( "transfer", "file", fc::variant(ac_transfer)));
 
       fc::logger_config lc_default("default");
@@ -145,8 +145,8 @@ int main( int argc, char** argv )
       lc_transfer.level         = fc::log_level::debug;
       lc_transfer.appenders     = {"transfer"};
 
-//    cfg.loggers.push_back(lc_default);
-//    cfg.loggers.push_back(lc_rpc);
+    cfg.loggers.push_back(lc_default);
+    cfg.loggers.push_back(lc_rpc);
       cfg.loggers.push_back(lc_transfer);
 
       std::clog << "Logging RPC to file: " << ac_rpc.filename.preferred_string() << std::endl;
