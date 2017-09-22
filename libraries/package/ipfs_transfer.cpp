@@ -8,6 +8,8 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
+#include <event2/thread.h>
+
 #include <vector>
 #include <regex>
 
@@ -28,19 +30,53 @@ namespace decent { namespace package {
             return false;
         }
 
+        static void signal_cb(evutil_socket_t sig, short events, void * ctx)
+        {
+            event_base_loopexit(static_cast<event_base*>(ctx), nullptr);
+        }
+
+        static void setup_threading()
+        {
+#ifdef EVTHREAD_USE_PTHREADS_IMPLEMENTED
+            evthread_use_pthreads();
+#elif defined(EVTHREAD_USE_WINDOWS_THREADS_IMPLEMENTED)
+            evthread_use_windows_threads();
+#else
+#   error No support for threading
+#endif
+        }
+
+
     } // namespace detail
 
 
+    // _client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
 
     IPFSDownloadPackageTask::IPFSDownloadPackageTask(PackageInfo& package)
         : detail::PackageTask(package)
-        , _client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
+        , _evbase(nullptr)
     {
+        /*
+         * We need this because ipfs_cache "pushes" events into our event loop from
+         * other threads.
+         */
+        detail::setup_threading();
+
+        _evbase = event_base_new();
+
+    }
+
+    IPFSDownloadPackageTask::~IPFSDownloadPackageTask()
+    {
+        if(_evbase) {
+            event_base_free(_evbase); _evbase = nullptr;
+        }
     }
 
     uint64_t IPFSDownloadPackageTask::ipfs_recursive_get_size(const std::string &url)
     {
         uint64_t size = 0;
+#if 0
         ipfs::Json objects;
         _client.Ls(url, &objects);
 
@@ -62,6 +98,8 @@ namespace decent { namespace package {
 
             }
         }
+#endif
+
         return size;
     }
 
@@ -71,6 +109,7 @@ namespace decent { namespace package {
         ilog("ipfs_recursive_get called for url ${u}",("u", url));
         FC_ASSERT( exists(dest_path) && is_directory(dest_path) );
 
+#if 0
         ipfs::Json objects;
         _client.Ls(url, &objects);
 
@@ -98,6 +137,8 @@ namespace decent { namespace package {
                 PACKAGE_TASK_EXIT_IF_REQUESTED;
             }
         }
+#endif
+
     }
 
     void IPFSDownloadPackageTask::task() {
@@ -183,9 +224,10 @@ namespace decent { namespace package {
         }
     }
 
+    // , _client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
+
     IPFSStartSeedingPackageTask::IPFSStartSeedingPackageTask(PackageInfo& package)
         : detail::PackageTask(package)
-        , _client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
     {
     }
 
@@ -194,7 +236,7 @@ namespace decent { namespace package {
 
         try {
             PACKAGE_TASK_EXIT_IF_REQUESTED;
-
+#if 0
             std::set<boost::filesystem::path> paths_to_skip;
             paths_to_skip.insert(_package.get_package_state_dir());
             paths_to_skip.insert(_package.get_lock_file_path());
@@ -233,10 +275,12 @@ namespace decent { namespace package {
                files_to_add.push_back({ file_rel_path.string(), ipfs::http::FileUpload::Type::kFileName, file.string() });
 #endif
             }
-
+#endif //0
 
 
             PACKAGE_INFO_CHANGE_TRANSFER_STATE(SEEDING);
+
+#if 0
 
             ipfs::Json added_files;
             _client.FilesAdd(files_to_add, &added_files);
@@ -261,6 +305,8 @@ namespace decent { namespace package {
 
             // TODO: remove the actual files?
 
+#endif
+
             PACKAGE_INFO_CHANGE_TRANSFER_STATE(SEEDING);
             PACKAGE_INFO_GENERATE_EVENT(package_seed_complete, ( ) );
         }
@@ -281,9 +327,10 @@ namespace decent { namespace package {
         }
     }
 
+    // , _client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
+
     IPFSStopSeedingPackageTask::IPFSStopSeedingPackageTask(PackageInfo& package)
         : detail::PackageTask(package)
-        , _client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
     {
     }
 
@@ -297,7 +344,11 @@ namespace decent { namespace package {
                 FC_THROW("'${url}' is not an ipfs NURI", ("url", _package._url));
             }
 
+#if 0
+
             _client.PinRm(obj_id, ipfs::Client::PinRmOptions::RECURSIVE);
+
+#endif
 
             PACKAGE_INFO_CHANGE_TRANSFER_STATE(TS_IDLE);
         }

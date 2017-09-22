@@ -12,7 +12,7 @@
 #include <decent/package/package_config.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <algorithm>
-#include <ipfs/client.h>
+//#include <ipfs/client.h>
 
 
 namespace decent { namespace seeding {
@@ -342,6 +342,8 @@ void seeding_plugin_impl::send_ready_to_publish()
    ilog("seeding plugin_impl: send_ready_to_publish() begin");
    const auto &sidx = database().get_index_type<my_seeder_index>().indices().get<by_seeder>();
    auto sritr = sidx.begin();
+
+#if 0 //WORKING
    ipfs::Client ipfs_client(decent::package::PackageManagerConfigurator::instance().get_ipfs_host(), decent::package::PackageManagerConfigurator::instance().get_ipfs_port());
    ipfs::Json json;
    ipfs_client.Id( &json );
@@ -386,6 +388,8 @@ void seeding_plugin_impl::send_ready_to_publish()
       //fc::usleep(fc::microseconds(1000000));
       sritr++;
    }
+#endif
+
    fc::time_point next_wakeup(fc::time_point::now() + fc::microseconds( (uint64_t) 1000000 * (60 * 60))); //let's send PoR every hour
    ilog("seeding plugin_impl: planning next send_ready_to_publish at ${t}",("t",next_wakeup ));
    service_thread->schedule([=](){ send_ready_to_publish();}, next_wakeup, "Seeding plugin RtP generate" );

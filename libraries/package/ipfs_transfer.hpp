@@ -5,8 +5,8 @@
 #include "detail.hpp"
 
 #include <decent/package/package.hpp>
-
-#include <ipfs/client.h>
+#include <ipfs_cache/client.h>
+#include <event2/event.h>
 
 #include <memory>
 
@@ -20,6 +20,7 @@ namespace decent { namespace package {
     class IPFSDownloadPackageTask : public detail::PackageTask {
     public:
         explicit IPFSDownloadPackageTask(PackageInfo& package);
+        virtual ~IPFSDownloadPackageTask();
 
     protected:
         virtual void task() override;
@@ -27,7 +28,8 @@ namespace decent { namespace package {
     private:
         uint64_t ipfs_recursive_get_size(const std::string &url);
         void     ipfs_recursive_get(const std::string &url, const boost::filesystem::path &dest_path);
-        ipfs::Client _client;
+
+        struct event_base * _evbase;
     };
 
 
@@ -39,7 +41,7 @@ namespace decent { namespace package {
         virtual void task() override;
 
     private:
-        ipfs::Client _client;
+        struct event_base * _evbase;
     };
 
 
@@ -51,7 +53,7 @@ namespace decent { namespace package {
         virtual void task() override;
 
     private:
-        ipfs::Client _client;
+        struct event_base * _evbase;
     };
 
 

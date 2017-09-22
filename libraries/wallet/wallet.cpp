@@ -82,7 +82,7 @@
 
 #include <fc/smart_ref_impl.hpp>
 #include "json.hpp"
-#include "ipfs/client.h"
+//#include "ipfs/client.h"
 #include <decent/package/package_config.hpp>
 
 #ifndef WIN32
@@ -121,8 +121,9 @@ private:
 
 struct ipfs_stats_listener : public EventListenerInterface{
 
-   ipfs_stats_listener(string URI, wallet_api_impl& api, account_id_type consumer):_URI(URI), _wallet(api), _consumer(consumer),
-      _ipfs_client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port()){}
+   ipfs_stats_listener(string URI, wallet_api_impl& api, account_id_type consumer):_URI(URI), _wallet(api), _consumer(consumer)
+         //  ,_ipfs_client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
+   {}
 
    virtual void package_download_start();
    virtual void package_download_complete();
@@ -132,7 +133,7 @@ private:
    string            _URI;
    wallet_api_impl&  _wallet;
    account_id_type   _consumer;
-   ipfs::Client      _ipfs_client;
+   //ipfs::Client      _ipfs_client;
 };
 
 struct submit_transfer_listener : public EventListenerInterface {
@@ -3102,11 +3103,13 @@ std::string operation_printer::operator()(const leave_rating_and_comment_operati
          for( const auto& element : new_seeders )
          {
             const string ipfs_ID = _wallet._remote_db->get_seeder( element )->ipfs_ID;
+#if 0 //WORKING
             ipfs::Json json;
             _ipfs_client.BitswapLedger( ipfs_ID, &json );
             uint64_t received = json["Recv"];
             wlog( "IPFS stats: package download start: ${r} bytes from ${id}", ("r", received)("id", ipfs_ID));
             _wallet._seeders_tracker.set_initial_stats( element, received );
+#endif
          }
       }
    }
@@ -3121,6 +3124,7 @@ std::string operation_printer::operator()(const leave_rating_and_comment_operati
          for( const auto& element : finished_seeders )
          {
             const string ipfs_ID = _wallet._remote_db->get_seeder( element )->ipfs_ID;
+#if 0 //WORKING
             ipfs::Json json;
             _ipfs_client.BitswapLedger( ipfs_ID, &json );
             uint64_t received = json["Recv"];
@@ -3129,6 +3133,7 @@ std::string operation_printer::operator()(const leave_rating_and_comment_operati
             stats.emplace( element, difference );
 
             _wallet._seeders_tracker.remove_stats( element );
+#endif
          }
 
          report_stats_operation op;

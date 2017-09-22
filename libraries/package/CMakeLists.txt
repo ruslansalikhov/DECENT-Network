@@ -1,6 +1,9 @@
 
 file( GLOB HEADERS "*.hpp" "include/package/package/*.hpp" )
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
+
 add_library( package_manager
              package.cpp
              detail.cpp
@@ -8,17 +11,35 @@ add_library( package_manager
              ipfs_transfer.cpp
              ${HEADERS} local.cpp local.hpp)
 
-target_link_libraries( package_manager fc decent_encrypt  nlohmann_json ipfs-api graphene_utilities )
+find_package(libevent2)
+
+target_link_libraries( package_manager
+        fc
+        decent_encrypt
+        nlohmann_json
+        graphene_utilities
+        #ipfs-cache
+        ${LIBEVENT2_LIBRARIES}
+        ${LIBEVENT2_PTHREAD_LIBRARIES}
+        ${LIBEVENT2_CORE_LIBRARIES}
+        ${LIBEVENT2_EXTRA_LIBRARIES}
+)
+
+
 target_include_directories( package_manager
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../contrib/cpp-ipfs-api/include")
+                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../contrib/cpp-ipfs-api/include"
+                            PRIVATE "${CMAKE_SOURCE_DIR}/libraries/contrib/ipfs-cache/include" )
+
+link_directories("${CMAKE_SOURCE_DIR}/libraries/contrib/ipfs-cache/lib"  )
+
 
 # A test/sanbox dev-only executable.
 add_executable( package_manager_sandbox sandbox.cpp ${HEADERS} )
 
 if( WIN32 )
-  target_link_libraries( package_manager_sandbox package_manager fc decent_encrypt nlohmann_json ipfs-api graphene_utilities ${GMP_LIBRARIES} )
+  target_link_libraries( package_manager_sandbox package_manager fc decent_encrypt nlohmann_json graphene_utilities ${GMP_LIBRARIES} )
 else()
-  target_link_libraries( package_manager_sandbox package_manager fc decent_encrypt nlohmann_json ipfs-api graphene_utilities gmp )
+  target_link_libraries( package_manager_sandbox package_manager fc decent_encrypt nlohmann_json graphene_utilities gmp )
 endif()
 
 #install( TARGETS
