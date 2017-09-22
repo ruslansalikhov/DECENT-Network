@@ -78,7 +78,7 @@ public:
     main_exception(std::string const& str_info) noexcept
     : m_str_info(str_info) {}
     virtual ~main_exception() {}
-    
+
     char const* what() const noexcept override
     {
         return m_str_info.c_str();
@@ -127,7 +127,7 @@ void curl_test_func(string const& str_url,
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, static_cast<void*>(&arr_response));
     curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-    if (false == str_post.empty())
+    if (!str_post.empty())
         curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDS, str_post.c_str());
     
     res = curl_easy_perform(curl_handle);
@@ -216,7 +216,7 @@ int main( int argc, char** argv )
       }
 
 
-       if (false == bool_override)
+       if (!bool_override)
        {
            cout << "look up the usage in \"help\"\n";
            return 0;
@@ -392,7 +392,7 @@ int main( int argc, char** argv )
                        brain_key_info bki = wapiptr->suggest_brain_key();
                        str_bki = bki.brain_priv_key;
                        str_wif_priv_key = bki.wif_priv_key;
-                       str_pub_key = string(bki.pub_key);
+                       str_pub_key = std::string(bki.pub_key);
                        
                        b_post_back = true;
                    }
@@ -414,7 +414,7 @@ int main( int argc, char** argv )
                    }
                    
                    int64_t decent_amount = 0;
-                   if (false == b_user_already_exists)
+                   if (!b_user_already_exists)
                    {
                        wapiptr->create_account_with_brain_key(str_bki,
                                                               str_new_account_name,
@@ -427,7 +427,7 @@ int main( int argc, char** argv )
                    else
                    {
                        bool b_imported = wapiptr->import_key(str_new_account_name, str_wif_priv_key);
-                       if (false == b_imported)
+                       if (!b_imported)
                            throw main_exception("already existing user " + str_new_account_name + " does not match the private key stored in db");
                        
                        vector<asset> arr_balances = wapiptr->list_account_balances(str_new_account_name);
@@ -447,7 +447,7 @@ int main( int argc, char** argv )
                    }
                    
                    if (b_post_back &&
-                       false == b_user_already_exists)
+                       !b_user_already_exists)
                    {
                        curl_test_func("https://api.decent.ch/v1.0/subscribers/" +
                                       str_user_id,
@@ -457,14 +457,14 @@ int main( int argc, char** argv )
                                       "&appbundle_subscriber[pubKey]=" + curl_escape(str_pub_key),
                                       str_response);
                        
-                       if (false == str_response.empty())
+                       if (!str_response.empty())
                        {
                            ++i_responses;
                            cout << std::to_string(i_responses) << " : " << str_response << "\n";
                        }
                    }
                    
-                   if (false == b_user_already_exists ||
+                   if (!b_user_already_exists ||
                        0 == decent_amount)
                    {
                        wapiptr->transfer(account_id(account_registrar),
