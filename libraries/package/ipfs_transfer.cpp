@@ -8,8 +8,6 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
-#include <event2/thread.h>
-
 #include <vector>
 #include <regex>
 
@@ -30,23 +28,6 @@ namespace decent { namespace package {
             return false;
         }
 
-        static void signal_cb(evutil_socket_t sig, short events, void * ctx)
-        {
-            event_base_loopexit(static_cast<event_base*>(ctx), nullptr);
-        }
-
-        static void setup_threading()
-        {
-#ifdef EVTHREAD_USE_PTHREADS_IMPLEMENTED
-            evthread_use_pthreads();
-#elif defined(EVTHREAD_USE_WINDOWS_THREADS_IMPLEMENTED)
-            evthread_use_windows_threads();
-#else
-#   error No support for threading
-#endif
-        }
-
-
     } // namespace detail
 
 
@@ -54,23 +35,14 @@ namespace decent { namespace package {
 
     IPFSDownloadPackageTask::IPFSDownloadPackageTask(PackageInfo& package)
         : detail::PackageTask(package)
-        , _evbase(nullptr)
     {
-        /*
-         * We need this because ipfs_cache "pushes" events into our event loop from
-         * other threads.
-         */
-        detail::setup_threading();
-
-        _evbase = event_base_new();
-
+        if (!m_ipfs.Initialize("/Users/milanfranc/.ipfs")) {
+            throw std::runtime_error("ipfs could not initialized!");
+        }
     }
 
     IPFSDownloadPackageTask::~IPFSDownloadPackageTask()
     {
-        if(_evbase) {
-            event_base_free(_evbase); _evbase = nullptr;
-        }
     }
 
     uint64_t IPFSDownloadPackageTask::ipfs_recursive_get_size(const std::string &url)
