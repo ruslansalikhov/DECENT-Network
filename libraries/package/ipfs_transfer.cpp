@@ -1,6 +1,7 @@
 /* (c) 2016, 2017 DECENT Services. For details refers to LICENSE.txt */
 
 #include "ipfs_transfer.hpp"
+#include "ipfs_wrapper.h"
 
 #include <decent/package/package.hpp>
 #include <decent/package/package_config.hpp>
@@ -8,7 +9,10 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
+#include <json.hpp>
+
 #include <vector>
+#include <string>
 #include <regex>
 
 namespace decent { namespace package {
@@ -48,16 +52,21 @@ namespace decent { namespace package {
     uint64_t IPFSDownloadPackageTask::ipfs_recursive_get_size(const std::string &url)
     {
         uint64_t size = 0;
-#if 0
-        ipfs::Json objects;
-        _client.Ls(url, &objects);
+
+        std::string result;
+        bool ret = m_ipfs.ipfs_ls(url, result);
+        if(!ret) {
+            //TODO: error..
+            return 0;
+        }
+
+        nlohmann::json  objects(result);
 
         for( auto nested_object : objects) {
-            ipfs::Json links = nested_object.at("Links");
+            nlohmann::json links = nested_object.at("Links");
 
             for (auto link : links) {
-               
-            
+
                 if((int) link.at("Type") == 1 ) //directory
                 {
                     size += ipfs_recursive_get_size(link.at("Hash"));
@@ -70,7 +79,6 @@ namespace decent { namespace package {
 
             }
         }
-#endif
 
         return size;
     }
@@ -81,13 +89,18 @@ namespace decent { namespace package {
         ilog("ipfs_recursive_get called for url ${u}",("u", url));
         FC_ASSERT( exists(dest_path) && is_directory(dest_path) );
 
-#if 0
-        ipfs::Json objects;
-        _client.Ls(url, &objects);
+        std::string result;
+        bool ret = m_ipfs.ipfs_ls(url, result);
+        if (!ret) {
+            //TODO: error..
+            return;
+        }
+
+        nlohmann::json  objects(result);
 
         for( auto nested_object : objects) {
             ilog("ipfs_recursive_get inside loop");
-            ipfs::Json links = nested_object.at("Links");
+            nlohmann::json links = nested_object.at("Links");
 
             for( auto &link : links ) {
                 if((int) link.at("Type") == 1 ) //directory
@@ -102,15 +115,16 @@ namespace decent { namespace package {
                     const std::string file_name = link.at("Name");
                     const std::string file_obj_id = link.at("Hash");
                     std::fstream myfile((dest_path / file_name).string(), std::ios::out | std::ios::binary);
+
+#if 0
                     _client.FilesGet(file_obj_id, &myfile);
+#endif
 
                     _package._downloaded_size += size;
                 }
                 PACKAGE_TASK_EXIT_IF_REQUESTED;
             }
         }
-#endif
-
     }
 
     void IPFSDownloadPackageTask::task() {

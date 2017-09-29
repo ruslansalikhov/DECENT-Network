@@ -46,15 +46,20 @@ set(IPFS_WRAPPER_FILES
 
 add_library(ipfs-wrapper STATIC
     ${IPFS_WRAPPER_FILES}
+    ${BINDING_DIR}/ipfs_bindings.h
 )
 
-add_dependencies(ipfs-wrapper ipfs-binding)
+add_dependencies(ipfs-wrapper ipfs-binding nlohmann_json)
+
+target_include_directories(ipfs-wrapper PRIVATE
+        ipfs-binding)
 
 target_include_directories(ipfs-wrapper PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 target_link_libraries(ipfs-wrapper PUBLIC
         ipfs-binding
+        nlohmann_json
 )
 
 target_link_libraries(ipfs-wrapper INTERFACE "-fobjc-link-runtime -framework Security")

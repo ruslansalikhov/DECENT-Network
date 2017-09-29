@@ -23,7 +23,7 @@ public:
 
 
 private:
-
+    bool m_started;
 
 };
 

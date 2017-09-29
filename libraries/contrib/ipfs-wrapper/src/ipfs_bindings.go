@@ -345,18 +345,18 @@ type LsObject struct {
 }
 
 //export go_ipfs_cache_ls
-func go_ipfs_cache_ls(c_fpath *C.char) bool {
+func go_ipfs_cache_ls(c_fpath *C.char) (bool, *C.char) {
 	fpath := C.GoString(c_fpath)
 
     if !g.node.OnlineMode() {
-        return false
+        return false, nil
     }
 
     dserv := g.node.DAG
 
     p, err := path.ParsePath(fpath)
     if err != nil {
-        return false
+        return false, nil
     }
 
     r := &path.Resolver{
@@ -366,12 +366,12 @@ func go_ipfs_cache_ls(c_fpath *C.char) bool {
 
     dagnode, err := core.Resolve(g.ctx, g.node.Namesys, r, p)
     if err != nil {
-        return false
+        return false, nil
     }
 
     dir, err := uio.NewDirectoryFromNode(g.node.DAG, dagnode)
     if err != nil && err != uio.ErrNotADir {
-        return false
+        return false, nil
     }
 
     var links []*node.Link
@@ -380,7 +380,7 @@ func go_ipfs_cache_ls(c_fpath *C.char) bool {
     } else {
         links, err = dir.Links(g.ctx)
         if err != nil {
-            return false
+            return false, nil
         }
     }
 
@@ -399,13 +399,13 @@ func go_ipfs_cache_ls(c_fpath *C.char) bool {
             // not an error
             linkNode = nil
         } else if err != nil {
-            return false
+            return false, nil
         }
 
         if pn, ok := linkNode.(*merkledag.ProtoNode); ok {
             d, err := unixfs.FromBytes(pn.Data())
             if err != nil {
-                return false
+                return false, nil
             }
 
             t = d.GetType()
@@ -421,9 +421,8 @@ func go_ipfs_cache_ls(c_fpath *C.char) bool {
 
     json_info, err := json.Marshal(output)
 
-    fmt.Println("AA:", string(json_info));
-
-    return true;
+    //fmt.Println("AA:", string(json_info));
+    return true, C.CString(string(json_info));
 }
 
 //export go_ipfs_cache_pin_add
