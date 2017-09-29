@@ -5,7 +5,7 @@
 
 #include <decent/package/package.hpp>
 
-
+#include <stdlib.h>
 
 namespace decent { namespace package {
 
@@ -18,7 +18,8 @@ public:
 
 protected:
    virtual void task() override;
-
+private:
+   virtual bool is_base_class() override {return false;};
 };
 
 class LocalTransferEngine : public TransferEngineInterface {
@@ -28,11 +29,15 @@ public:
    };
    virtual std::shared_ptr<detail::PackageTask> create_start_seeding_task(PackageInfo& package) override 
    {
+      elog("this shall be never called!");
+      std::abort();
       std::shared_ptr<detail::PackageTask> result;
       return result;
    };
    virtual std::shared_ptr<detail::PackageTask> create_stop_seeding_task(PackageInfo& package) override 
    {
+      elog("this shall be never called!");
+      std::abort();
       std::shared_ptr<detail::PackageTask> result;
       return result;
    };

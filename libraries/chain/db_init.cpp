@@ -111,7 +111,12 @@ void database::initialize_evaluators()
    register_evaluator<account_update_evaluator>();
    register_evaluator<custom_evaluator>();
    register_evaluator<asset_create_evaluator>();
-   register_evaluator<asset_update_evaluator>();
+   register_evaluator<asset_issue_evaluator>();
+   register_evaluator<monitored_asset_update_evaluator>();
+   register_evaluator<user_issued_asset_update_evaluator>();
+   register_evaluator<asset_fund_pools_evaluator>();
+   register_evaluator<asset_reserve_evaluator>();
+   register_evaluator<asset_claim_fees_evaluator>();
    register_evaluator<assert_evaluator>();
    register_evaluator<transfer_evaluator>();
    register_evaluator<proposal_create_evaluator>();
@@ -131,6 +136,7 @@ void database::initialize_evaluators()
    register_evaluator<request_to_buy_evaluator>();
    register_evaluator<leave_rating_evaluator>();
    register_evaluator<ready_to_publish_evaluator>();
+   register_evaluator<ready_to_publish2_evaluator>();
    register_evaluator<deliver_keys_evaluator>();
    register_evaluator<proof_of_custody_evaluator>();
    register_evaluator<subscribe_evaluator>();
@@ -274,9 +280,13 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    const asset_object& core_asset =
      create<asset_object>( [&]( asset_object& a ) {
          a.symbol = GRAPHENE_SYMBOL;
-         a.max_supply = genesis_state.max_core_supply;
          a.precision = GRAPHENE_BLOCKCHAIN_PRECISION_DIGITS;
          a.issuer = GRAPHENE_NULL_ACCOUNT;
+         a.options.max_supply = genesis_state.max_core_supply;
+         a.options.core_exchange_rate.base.amount = 1;
+         a.options.core_exchange_rate.base.asset_id = asset_id_type(0);
+         a.options.core_exchange_rate.quote.amount = 1;
+         a.options.core_exchange_rate.quote.asset_id = asset_id_type(0);
          a.dynamic_asset_data_id = dyn_asset.id;
       });
    assert( asset_id_type(core_asset.id) == asset().asset_id );
@@ -293,7 +303,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
          });
       const asset_object& asset_obj = create<asset_object>( [&]( asset_object& a ) {
          a.symbol = "SPECIAL" + std::to_string( id );
-         a.max_supply = 0;
+         a.options.max_supply = 0;
          a.precision = GRAPHENE_BLOCKCHAIN_PRECISION_DIGITS;
          a.issuer = GRAPHENE_NULL_ACCOUNT;
 
@@ -426,7 +436,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
       asset_dynamic_data_id_type dynamic_data_id;
 
       dynamic_data_id = create<asset_dynamic_data_object>([&](asset_dynamic_data_object& d) {
-         d.accumulated_fees = 0;
+         d.asset_pool = 0;
       }).id;
 
       create<asset_object>([&](asset_object& a) {
@@ -437,7 +447,7 @@ void database::init_genesis(const genesis_state_type& genesis_state)
          a.precision = asset.precision;
          string issuer_name = asset.issuer_name;
          a.issuer = get_account_id(issuer_name);
-         a.max_supply = 0;
+         a.options.max_supply = 0;
          a.dynamic_asset_data_id = dynamic_data_id;
       });
    }

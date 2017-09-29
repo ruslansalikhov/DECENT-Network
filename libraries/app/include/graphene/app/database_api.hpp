@@ -426,6 +426,13 @@ namespace graphene { namespace app {
          share_type get_new_asset_per_block() const;
          share_type get_asset_per_block_by_block_num(uint32_t block_num) const;
 
+         /**
+          * @brief Converts asset into DCT, using actual price feed.
+          * @param price asset in DCT, monitored asset or user issued asset
+          * @return price in DCT
+          * @ingroup DatabaseAPI
+          */
+         asset price_to_dct( asset price )const;
 
          ///////////////
          // Miners //
@@ -463,6 +470,17 @@ namespace graphene { namespace app {
           * @ingroup DatabaseAPI
           */
          uint64_t get_miner_count()const;
+
+         /**
+          * @brief Get a list of published price feeds by a miner.
+          *
+          * @param account_id id of the account
+          * @param count Maximum number of price feeds to fetch (must not exceed 100)
+          * @returns list of price feeds published by the miner
+          * @ingroup WalletCLI
+          */
+         multimap< time_point_sec, price_feed> get_feeds_by_miner(const account_id_type account_id,
+                                                                  const uint32_t count)const;
 
          ///////////
          // Votes //
@@ -708,6 +726,14 @@ namespace graphene { namespace app {
          optional<vector<seeder_object>> list_seeders_by_upload( const uint32_t count )const;
 
          /**
+          * @brief Get a list of seeders by region code
+          * @param region_code Region code of seeders to retrieve
+          * @return The seeders found
+          * @ingroup DatabaseAPI
+          */
+         vector<seeder_object> list_seeders_by_region( const string region_code )const;
+
+         /**
           * @brief Get a list of seeders by rating, in decreasing order
           * @param count Maximum number of seeders to retrieve
           * @return The seeders found
@@ -825,12 +851,14 @@ FC_API(graphene::app::database_api,
           (get_assets)
           (list_assets)
           (lookup_asset_symbols)
+          (price_to_dct)
 
           // Miners
           (get_miners)
           (get_miner_by_account)
           (lookup_miner_accounts)
           (get_miner_count)
+          (get_feeds_by_miner)
 
           // Votes
           (lookup_vote_ids)
@@ -862,6 +890,7 @@ FC_API(graphene::app::database_api,
           (search_content)
           (list_publishers_by_price)
           (list_seeders_by_upload)
+          (list_seeders_by_region)
           (list_seeders_by_rating)
           (get_seeder)
           (get_real_supply)

@@ -16,6 +16,7 @@ namespace decent { namespace seeding {
       uint64_t free_space;
       std::string seeding_price;
       fc::path packages_path;
+      std::string region_code;
       std::string seeding_symbol;
 
    };
@@ -25,4 +26,4 @@ namespace decent { namespace seeding {
 }
 
 FC_REFLECT(decent::seeding::seeding_plugin_startup_options,
-           (seeder)(content_private_key)(seeder_private_key)(free_space)(seeding_price)(packages_path))
+           (seeder)(content_private_key)(seeder_private_key)(free_space)(seeding_price)(packages_path)(region_code))

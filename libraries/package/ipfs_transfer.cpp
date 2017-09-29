@@ -45,10 +45,6 @@ namespace decent { namespace package {
         }
     }
 
-    IPFSDownloadPackageTask::~IPFSDownloadPackageTask()
-    {
-    }
-
     uint64_t IPFSDownloadPackageTask::ipfs_recursive_get_size(const std::string &url)
     {
         uint64_t size = 0;

@@ -15,7 +15,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
-
+#include <stdlib.h>
 
 namespace decent { namespace package {
 
@@ -40,7 +40,13 @@ namespace detail {
 
     class PackageTask {
     public:
-        explicit PackageTask(PackageInfo& package);
+
+         PackageTask() = delete;
+         PackageTask(PackageTask& package) = delete;
+         PackageTask(const PackageTask& package) = delete;
+         PackageTask operator =(PackageTask& task) = delete;
+         PackageTask operator =(const PackageTask& task) = delete;
+         PackageTask(PackageTask&& package) = delete;
         virtual ~PackageTask();
 
         virtual void start(const bool block = false);
@@ -51,14 +57,16 @@ namespace detail {
         std::exception_ptr consume_last_error();
 
     protected:
+        explicit PackageTask(PackageInfo& package);
         class StopRequestedException {};
 
-        virtual void task() = 0;
+        virtual void task() {elog("This should never happened!"); std::abort();};
 
     private:
         std::atomic<bool>   _running;
         std::atomic<bool>   _stop_requested;
         std::exception_ptr  _last_exception;
+        virtual bool is_base_class(){return true;};
 
     protected:
         std::shared_ptr<fc::thread> _thread;

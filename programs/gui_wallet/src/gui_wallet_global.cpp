@@ -25,6 +25,7 @@
 #include <graphene/seeding/seeding.hpp>
 #include <graphene/account_history/account_history_plugin.hpp>
 #include <graphene/utilities/dirhelper.hpp>
+#include <graphene/messaging/messaging.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/log/console_appender.hpp>
@@ -804,19 +805,17 @@ void Globals::slot_updateAccountBalance()
 
       if (allBalances.empty())
          emit signal_updateAccountBalance(asset(0));
-      else if (allBalances.size() != 1)
-         throw std::runtime_error("an account cannot have more than one balance");
       else
       {
-         auto const& json_balance = allBalances[0]["amount"];
-
          Asset ast_balance = asset(0);
-
-         if (json_balance.is_number())
-            ast_balance.m_amount = json_balance.get<uint64_t>();
-         else
-            ast_balance.m_amount = std::stoll(json_balance.get<string>());
-         
+         for ( auto balance:allBalances ){
+            if(balance["asset_id"].get<string>() == "1.3.0") {
+               if( balance[ "amount" ].is_number())
+                  ast_balance.m_amount = balance[ "amount" ].get<uint64_t>();
+               else
+                  ast_balance.m_amount = std::stoll(balance[ "amount" ].get<string>());
+            }
+         }
          emit signal_updateAccountBalance(ast_balance);
       }
    }
@@ -1172,6 +1171,7 @@ int runDecentD(gui_wallet::BlockChainStartType type, fc::promise<void>::ptr& exi
       auto miner_plug = node->register_plugin<miner_plugin::miner_plugin>();
       auto history_plug = node->register_plugin<account_history::account_history_plugin>();
       auto seeding_plug = node->register_plugin<decent::seeding::seeding_plugin>();
+      auto messaging_plug = node->register_plugin<decent::messaging::messaging_plugin>();
 
       try
       {

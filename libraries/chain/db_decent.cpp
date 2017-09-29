@@ -227,10 +227,11 @@ void database::decent_housekeeping()
    while( bitr != bidx.end() && bitr->expiration_time <= head_block_time() )
    {
       if(!bitr->delivered) {
-         buying_expire(*bitr);
-
          return_escrow_buying_operation rebop;
          rebop.escrow = bitr->price;
+
+         buying_expire(*bitr);
+
          rebop.consumer = bitr->consumer;
          rebop.buying = bitr->id;
          push_applied_operation(rebop);
@@ -398,7 +399,8 @@ real_supply database::get_real_supply()const
    const auto& abidx = get_index_type<account_balance_index>().indices().get<by_id>();
    auto abitr = abidx.begin();
    while( abitr != abidx.end() ){
-      total.account_balances += abitr->balance;
+      if( abitr->asset_type == asset_id_type() )
+         total.account_balances += abitr->balance;
       ++abitr;
    }
 
@@ -421,6 +423,12 @@ real_supply database::get_real_supply()const
    while( bitr != bidx.end() ){
       total.escrows += bitr->price.amount;
       ++bitr;
+   }
+
+   const auto& aidx = get_index_type<asset_index>().indices().get<by_id>();
+   for(const auto& a: aidx){
+      const auto& ad = a.dynamic_asset_data_id(*this);
+      total.pools += ad.core_pool;
    }
    return total;
 }

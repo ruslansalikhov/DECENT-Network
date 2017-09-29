@@ -60,11 +60,16 @@ struct get_impacted_account_visitor
    }
 
    void operator()( const asset_create_operation& op ) {}
-   void operator()( const asset_update_operation& op )
+   void operator()( const update_monitored_asset_operation& op ) {}
+   void operator()( const update_user_issued_asset_operation& op )
    {
       if( op.new_issuer )
          _impacted.insert( *(op.new_issuer) );
    }
+   void operator()( const asset_issue_operation& op ) { _impacted.insert( op.issuer ); _impacted.insert( op.issue_to_account ); }
+   void operator()( const asset_fund_pools_operation& op ) { _impacted.insert( op.from_account ); }
+   void operator()( const asset_reserve_operation& op ) { _impacted.insert( op.payer ); }
+   void operator()( const asset_claim_fees_operation& op ) { _impacted.insert( op.issuer ); }
 
    void operator()( const asset_publish_feed_operation& op ) {}
    void operator()( const miner_create_operation& op )
@@ -124,6 +129,8 @@ struct get_impacted_account_visitor
    void operator()( const request_to_buy_operation& op) { _impacted.insert(op.consumer); }
    void operator()( const leave_rating_and_comment_operation& op) { _impacted.insert(op.consumer);}
    void operator()( const ready_to_publish_operation& op) { _impacted.insert(op.seeder); }
+   void operator()( const ready_to_publish2_operation& op) { _impacted.insert(op.seeder); }
+
    void operator()( const proof_of_custody_operation& op) { _impacted.insert(op.seeder);}
    void operator()( const deliver_keys_operation& op) {  _impacted.insert(op.seeder);}
    void operator()( const subscribe_operation& op) { _impacted.insert(op.from); _impacted.insert(op.to); }

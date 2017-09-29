@@ -84,6 +84,7 @@
 #include "json.hpp"
 //#include "ipfs/client.h"
 #include <decent/package/package_config.hpp>
+#include <graphene/chain/hardfork.hpp>
 
 #ifndef WIN32
 # include <sys/types.h>
@@ -1171,12 +1172,14 @@ public:
    } FC_CAPTURE_AND_RETHROW( (account_name)(registrar_account) ) }
 
 
-   signed_transaction create_asset(string issuer,
-                                   string symbol,
-                                   uint8_t precision,
-                                   string description,
-                                   uint64_t max_supply,
-                                   bool broadcast = false)
+   signed_transaction create_user_issued_asset(string issuer,
+                                               string symbol,
+                                               uint8_t precision,
+                                               string description,
+                                               uint64_t max_supply,
+                                               price core_exchange_rate,
+                                               bool is_exchangeable,
+                                               bool broadcast = false)
    { try {
       account_object issuer_account = get_account( issuer );
       FC_ASSERT(!find_asset(symbol).valid(), "Asset with that symbol already exists!");
@@ -1186,7 +1189,12 @@ public:
       create_op.symbol = symbol;
       create_op.precision = precision;
       create_op.description = description;
-      create_op.max_supply = max_supply;
+      asset_options opts;
+      opts.max_supply = max_supply;
+      opts.core_exchange_rate = core_exchange_rate;
+      opts.is_exchangeable = is_exchangeable;
+      create_op.options = opts;
+      create_op.monitored_asset_opts = optional<monitored_asset_options>();
 
       signed_transaction tx;
       tx.operations.push_back( create_op );
@@ -1194,7 +1202,149 @@ public:
       tx.validate();
 
       return sign_transaction( tx, broadcast );
-   } FC_CAPTURE_AND_RETHROW( (issuer)(symbol)(precision)(description)(max_supply)(broadcast) ) }
+   } FC_CAPTURE_AND_RETHROW( (issuer)(symbol)(precision)(description)(max_supply)(is_exchangeable)(broadcast) ) }
+
+   signed_transaction issue_asset(string to_account, string amount, string symbol,
+                                  string memo, bool broadcast = false)
+   {
+      auto asset_obj = get_asset(symbol);
+
+      account_object to = get_account(to_account);
+      account_object issuer = get_account(asset_obj.issuer);
+
+      asset_issue_operation issue_op;
+      issue_op.issuer           = asset_obj.issuer;
+      issue_op.asset_to_issue   = asset_obj.amount_from_string(amount);
+      issue_op.issue_to_account = to.id;
+
+      if( memo.size() )
+      {
+         issue_op.memo = memo_data();
+         issue_op.memo->from = issuer.options.memo_key;
+         issue_op.memo->to = to.options.memo_key;
+         issue_op.memo->set_message(get_private_key(issuer.options.memo_key),
+                                    to.options.memo_key, memo);
+      }
+
+      signed_transaction tx;
+      tx.operations.push_back(issue_op);
+      set_operation_fees(tx,_remote_db->get_global_properties().parameters.current_fees);
+      tx.validate();
+
+      return sign_transaction(tx, broadcast);
+   }
+
+   signed_transaction update_user_issued_asset(string symbol,
+                                               string new_issuer,
+                                               string description,
+                                               uint64_t max_supply,
+                                               price core_exchange_rate,
+                                               bool is_exchangeable,
+                                               bool broadcast = false)
+   { try {
+         optional<asset_object> asset_to_update = find_asset(symbol);
+         if (!asset_to_update)
+            FC_THROW("No asset with that symbol exists!");
+
+         update_user_issued_asset_operation update_op;
+         update_op.issuer = asset_to_update->issuer;
+         update_op.asset_to_update = asset_to_update->id;
+         update_op.new_description = description;
+         update_op.max_supply = max_supply;
+         update_op.core_exchange_rate = core_exchange_rate;
+         update_op.is_exchangeable = is_exchangeable;
+
+         optional<account_id_type> new_issuer_account_id;
+         if( new_issuer != "" )
+         {
+            account_object new_issuer_account = get_account(new_issuer);
+            new_issuer_account_id = new_issuer_account.id;
+         }
+         update_op.new_issuer = new_issuer_account_id;
+
+         signed_transaction tx;
+         tx.operations.push_back( update_op );
+         set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees);
+         tx.validate();
+
+         return sign_transaction( tx, broadcast );
+      } FC_CAPTURE_AND_RETHROW( (symbol)(new_issuer)(description)(max_supply)(core_exchange_rate)(is_exchangeable)(broadcast) ) }
+
+      signed_transaction fund_asset_pools(string from,
+                                          string uia_amount,
+                                          string uia_symbol,
+                                          string DCT_amount,
+                                          string DCT_symbol,
+                                          bool broadcast /* = false */)
+      { try {
+            account_object from_account = get_account(from);
+            optional<asset_object> uia_asset_to_fund = find_asset(uia_symbol);
+            FC_ASSERT( uia_asset_to_fund.valid() , "Asset ${uia} does not exist.", ("uia", uia_asset_to_fund->symbol));
+
+            optional<asset_object> dct_asset_to_fund = find_asset(DCT_symbol);
+            FC_ASSERT( dct_asset_to_fund.valid() ,"Asset ${dct} does not exist.", ("dct", dct_asset_to_fund->symbol));
+
+            asset_fund_pools_operation fund_op;
+            fund_op.from_account = from_account.id;
+            fund_op.uia_asset = uia_asset_to_fund->amount_from_string(uia_amount);
+            fund_op.dct_asset = dct_asset_to_fund->amount_from_string(DCT_amount);
+
+            signed_transaction tx;
+            tx.operations.push_back( fund_op );
+            set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees);
+            tx.validate();
+
+            return sign_transaction( tx, broadcast );
+         } FC_CAPTURE_AND_RETHROW( (from)(uia_amount)(uia_symbol)(DCT_amount)(DCT_symbol)(broadcast) ) }
+
+   signed_transaction reserve_asset(string from,
+                                    string amount,
+                                    string symbol,
+                                    bool broadcast /* = false */)
+   { try {
+         account_object from_account = get_account(from);
+         optional<asset_object> asset_to_reserve = find_asset(symbol);
+         if (!asset_to_reserve)
+            FC_THROW("No asset with that symbol exists!");
+
+         asset_reserve_operation reserve_op;
+         reserve_op.payer = from_account.id;
+         reserve_op.amount_to_reserve = asset_to_reserve->amount_from_string(amount);
+
+         signed_transaction tx;
+         tx.operations.push_back( reserve_op );
+         set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees);
+         tx.validate();
+
+         return sign_transaction( tx, broadcast );
+      } FC_CAPTURE_AND_RETHROW( (from)(amount)(symbol)(broadcast) ) }
+
+   signed_transaction claim_fees(string uia_amount,
+                                 string uia_symbol,
+                                 string dct_amount,
+                                 string dct_symbol,
+                                 bool broadcast /* = false */)
+   { try {
+         optional<asset_object> uia_asset_to_claim = find_asset(uia_symbol);
+         if (!uia_asset_to_claim)
+            FC_THROW("No asset with that symbol exists!");
+         optional<asset_object> dct_asset_to_claim = find_asset(dct_symbol);
+         if (!dct_asset_to_claim)
+            FC_THROW("No asset with that symbol exists!");
+         FC_ASSERT( dct_asset_to_claim->id == asset_id_type() );
+
+         asset_claim_fees_operation claim_fees_op;
+         claim_fees_op.issuer = uia_asset_to_claim->issuer;
+         claim_fees_op.uia_asset = uia_asset_to_claim->amount_from_string(uia_amount);
+         claim_fees_op.dct_asset = dct_asset_to_claim->amount_from_string(dct_amount);
+
+         signed_transaction tx;
+         tx.operations.push_back( claim_fees_op );
+         set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees);
+         tx.validate();
+
+         return sign_transaction( tx, broadcast );
+      } FC_CAPTURE_AND_RETHROW( (uia_amount)(uia_symbol)(dct_amount)(dct_symbol)(broadcast) ) }
 
    signed_transaction create_monitored_asset(string issuer,
                                              string symbol,
@@ -1212,9 +1362,15 @@ public:
       create_op.symbol = symbol;
       create_op.precision = precision;
       create_op.description = description;
-      create_op.max_supply = 0;
-      create_op.feed_lifetime_sec = feed_lifetime_sec;
-      create_op.minimum_feeds = minimum_feeds;
+
+      asset_options opts;
+      opts.max_supply = 0;
+      create_op.options = opts;
+
+      monitored_asset_options m_opts;
+      m_opts.feed_lifetime_sec = feed_lifetime_sec;
+      m_opts.minimum_feeds = minimum_feeds;
+      create_op.monitored_asset_opts = m_opts;
 
       signed_transaction tx;
       tx.operations.push_back( create_op );
@@ -1225,7 +1381,6 @@ public:
    } FC_CAPTURE_AND_RETHROW( (issuer)(symbol)(precision)(description)(feed_lifetime_sec)(minimum_feeds)(broadcast) ) }
 
    signed_transaction update_monitored_asset(string symbol,
-                                             string new_issuer,
                                              string description,
                                              uint32_t feed_lifetime_sec,
                                              uint8_t minimum_feeds,
@@ -1235,16 +1390,10 @@ public:
       if (!asset_to_update)
         FC_THROW("No asset with that symbol exists!");
 
-      asset_update_operation update_op;
+      update_monitored_asset_operation update_op;
       update_op.issuer = asset_to_update->issuer;
-      if(new_issuer.size()) {
-         auto ni = get_account_id(new_issuer);
-         update_op.new_issuer = ni;
-      }
       update_op.asset_to_update = asset_to_update->id;
-
       update_op.new_description = description;
-      update_op.max_supply = 0;
       update_op.new_feed_lifetime_sec = feed_lifetime_sec;
       update_op.new_minimum_feeds = minimum_feeds;
 
@@ -1254,7 +1403,7 @@ public:
       tx.validate();
 
       return sign_transaction( tx, broadcast );
-   } FC_CAPTURE_AND_RETHROW( (symbol)(new_issuer)(description)(feed_lifetime_sec)(minimum_feeds)(broadcast) ) }
+   } FC_CAPTURE_AND_RETHROW( (symbol)(description)(feed_lifetime_sec)(minimum_feeds)(broadcast) ) }
 
    signed_transaction publish_asset_feed(string publishing_account,
                                          string symbol,
@@ -2141,8 +2290,7 @@ public:
                                        vector<regional_price_info> const& price_amounts,
                                        vector<account_id_type> const& seeders,
                                        fc::time_point_sec const& expiration,
-                                       string const& synopsis,
-                                       bool broadcast/* = false */)
+                                       string const& synopsis)
    {
       auto& package_manager = decent::package::PackageManager::instance();
 
@@ -2176,8 +2324,6 @@ public:
          fc::sha256 sha_key;
          secret.Encode((byte*)sha_key._hash, 32);
 
-         elog("the encryption key is: ${k}", ("k", sha_key));
-
          uint32_t quorum = std::max((vector<account_id_type>::size_type)2, seeders.size()/3);
          ShamirSecret ss(quorum, seeders.size(), secret);
          ss.calculate_split();
@@ -2210,7 +2356,12 @@ public:
          submit_op.expiration = expiration;
          submit_op.synopsis = synopsis;
 
-         auto package_handle = package_manager.get_package(content_dir, samples_dir, sha_key);
+         uint32_t sectors;
+         if(head_block_time()>HARDFORK_1_TIME )
+            sectors = DECENT_SECTORS;
+         else
+            sectors = DECENT_SECTORS_BIG;
+         auto package_handle = package_manager.get_package(content_dir, samples_dir, sha_key, sectors);
          shared_ptr<submit_transfer_listener> listener_ptr = std::make_shared<submit_transfer_listener>(*this, package_handle, submit_op, protocol);
          _package_manager_listeners.push_back(listener_ptr);
          
@@ -2220,7 +2371,7 @@ public:
          //We end up here and return the  to the upper layer. The create method will continue in the background, and once finished, it will call the respective callback of submit_transfer_listener class
          return ;
       }
-      FC_CAPTURE_AND_RETHROW( (author)(content_dir)(samples_dir)(protocol)(price_amounts)(seeders)(expiration)(synopsis)(broadcast) )
+      FC_CAPTURE_AND_RETHROW( (author)(content_dir)(samples_dir)(protocol)(price_amounts)(seeders)(expiration)(synopsis) )
    }
 
 signed_transaction content_cancellation(string author,
@@ -2288,13 +2439,7 @@ signed_transaction content_cancellation(string author,
    }
 
    asset price_to_dct(asset price){
-      if(price.asset_id == asset_id_type() )
-         return price;
-      auto asset = get_asset(price.asset_id);
-      FC_ASSERT(asset.is_monitored_asset(), "unable to determine DCT price for UIA");
-      auto current_price = asset.monitored_asset_opts->current_feed.core_exchange_rate;
-      FC_ASSERT(!current_price.is_null(), "unable to determine DCT price without price feeds");
-      return price * current_price;
+      return _remote_db->price_to_dct(price);
    }
 
    void download_content(string const& consumer, string const& URI, string const& str_region_code_from, bool broadcast)
@@ -2425,12 +2570,13 @@ signed_transaction content_cancellation(string author,
                          string seeder_private_key,
                          uint64_t free_space,
                          uint32_t seeding_price,
-                         string packages_path)
+                         string packages_path,
+                         string region_code)
    {
       account_id_type seeder = get_account_id( account_id_type_or_name );
       use_network_node_api();
       fc::ecc::private_key seeder_priv_key = *(wif_to_key(seeder_private_key));
-      (*_remote_net_node)->seeding_startup( seeder, content_private_key, seeder_priv_key, free_space, seeding_price, packages_path);
+      (*_remote_net_node)->seeding_startup( seeder, content_private_key, seeder_priv_key, free_space, seeding_price, packages_path, region_code);
    }
 
    signed_transaction subscribe_to_author( string from,
@@ -2589,7 +2735,30 @@ signed_transaction content_cancellation(string author,
       } FC_CAPTURE_AND_RETHROW((id))
    }
 
-   void send_message(string from, string to, string text)
+   vector<text_message> get_messages(const std::string& receiver, uint32_t max_count)const
+   {
+         FC_ASSERT(!is_locked());
+         const auto& mapi = _remote_api->messaging();
+         const auto& receiver_id = get_account_id(receiver);
+         vector<message_object> objects = get_message_objects(receiver_id, max_count);
+         vector<text_message> messages;
+
+         for (message_object& obj : objects) {
+            graphene::chain::text_message msg;
+            
+
+            msg.created = obj.created;
+            account_object account_sender = get_account(obj.sender);
+            msg.from = account_sender.name;
+            msg.to = receiver;
+            msg.text = obj.text;
+
+            messages.push_back(msg);
+         }
+         return messages;
+   }
+
+   signed_transaction send_message(string from, string to, string text, bool broadcast)
    {
       try {
       FC_ASSERT(!is_locked());
@@ -2624,9 +2793,9 @@ signed_transaction content_cancellation(string author,
       set_operation_fees(tx, _remote_db->get_global_properties().parameters.current_fees);
       tx.validate();
 
-      sign_transaction(tx, true);
+      return sign_transaction(tx, broadcast);
 
-   } FC_CAPTURE_AND_RETHROW((from)(to)(text)) 
+   } FC_CAPTURE_AND_RETHROW((from)(to)(text)(broadcast))
    }
 
    void dbg_make_mia(string creator, string symbol)
@@ -3699,13 +3868,12 @@ std::string operation_printer::operator()(const leave_rating_and_comment_operati
    }
 
    signed_transaction wallet_api::update_monitored_asset(string symbol,
-                                                         string new_issuer,
                                                          string description,
                                                          uint32_t feed_lifetime_sec,
                                                          uint8_t minimum_feeds,
                                                          bool broadcast /* = false */)
    {
-      return my->update_monitored_asset(symbol, new_issuer, description, feed_lifetime_sec, minimum_feeds, broadcast);
+      return my->update_monitored_asset(symbol, description, feed_lifetime_sec, minimum_feeds, broadcast);
    }
 
    signed_transaction wallet_api::publish_asset_feed(string publishing_account,
@@ -3714,6 +3882,69 @@ std::string operation_printer::operator()(const leave_rating_and_comment_operati
                                                      bool broadcast /* = false */)
    {
       return my->publish_asset_feed(publishing_account, symbol, feed, broadcast);
+   }
+
+   multimap<time_point_sec, price_feed> wallet_api::get_feeds_by_miner(const string& account_name_or_id,
+                                                                     const uint32_t count)
+   {
+      account_id_type account_id = get_account( account_name_or_id ).id;
+      return my->_remote_db->get_feeds_by_miner( account_id, count );
+   }
+
+   signed_transaction wallet_api::create_user_issued_asset(string issuer,
+                                                           string symbol,
+                                                           uint8_t precision,
+                                                           string description,
+                                                           uint64_t max_supply,
+                                                           price core_exchange_rate,
+                                                           bool is_exchangeable,
+                                                           bool broadcast /* = false */)
+   {
+      return my->create_user_issued_asset(issuer, symbol, precision, description, max_supply, core_exchange_rate, is_exchangeable, broadcast);
+   }
+
+   signed_transaction wallet_api::issue_asset(string to_account, string amount, string symbol,
+                                              string memo, bool broadcast)
+   {
+      return my->issue_asset(to_account, amount, symbol, memo, broadcast);
+   }
+
+   signed_transaction wallet_api::update_user_issued_asset(string symbol,
+                                                           string new_issuer,
+                                                           string description,
+                                                           uint64_t max_supply,
+                                                           price core_exchange_rate,
+                                                           bool is_exchangeable,
+                                                           bool broadcast /* = false */)
+   {
+      return my->update_user_issued_asset(symbol, new_issuer, description, max_supply, core_exchange_rate, is_exchangeable, broadcast);
+   }
+
+   signed_transaction wallet_api::fund_asset_pools(string from,
+                                                   string uia_amount,
+                                                   string uia_symbol,
+                                                   string DCT_amount,
+                                                   string DCT_symbol,
+                                                   bool broadcast /* = false */)
+   {
+      return my->fund_asset_pools(from, uia_amount, uia_symbol, DCT_amount, DCT_symbol, broadcast);
+   }
+
+   signed_transaction wallet_api::reserve_asset(string from,
+                                                string amount,
+                                                string symbol,
+                                                bool broadcast /* = false */)
+   {
+      return my->reserve_asset(from, amount, symbol, broadcast);
+   }
+
+   signed_transaction wallet_api::claim_fees(string uia_amount,
+                                             string uia_symbol,
+                                             string dct_amount,
+                                             string dct_symbol,
+                                             bool broadcast /* = false */)
+   {
+      return my->claim_fees( uia_amount, uia_symbol, dct_amount, dct_symbol, broadcast);
    }
 
    map<string,miner_id_type> wallet_api::list_miners(const string& lowerbound, uint32_t limit)
@@ -4091,10 +4322,9 @@ std::string operation_printer::operator()(const leave_rating_and_comment_operati
                                      string const &protocol,
                                      vector<regional_price_info> const &price_amounts,
                                      vector<account_id_type> const &seeders,
-                                     fc::time_point_sec const &expiration, string const &synopsis,
-                                     bool broadcast)
+                                     fc::time_point_sec const &expiration, string const &synopsis)
    {
-      my->submit_content_async(author, co_authors, content_dir, samples_dir, protocol, price_amounts, seeders, expiration, synopsis, broadcast);
+      return my->submit_content_async(author, co_authors, content_dir, samples_dir, protocol, price_amounts, seeders, expiration, synopsis);
 
    }
 
@@ -4147,9 +4377,10 @@ void wallet_api::leave_rating_and_comment(string consumer,
                                     string seeder_private_key,
                                     uint64_t free_space,
                                     uint32_t seeding_price,
-                                    string packages_path)
+                                    string packages_path,
+                                    string region_code)
    {
-      return my->seeding_startup(account_id_type_or_name, content_private_key, seeder_private_key, free_space, seeding_price, packages_path);
+      return my->seeding_startup(account_id_type_or_name, content_private_key, seeder_private_key, free_space, seeding_price, packages_path, region_code);
    }
 
    DInteger wallet_api::restore_encryption_key(string consumer, buying_id_type buying)
@@ -4342,6 +4573,11 @@ pair<account_id_type, vector<account_id_type>> wallet_api::get_author_and_co_aut
       return my->_remote_db->list_seeders_by_upload( count );
    }
 
+   vector<seeder_object> wallet_api::list_seeders_by_region( const string region_code )const
+   {
+      return my->_remote_db->list_seeders_by_region( region_code );
+   }
+
    vector<seeder_object> wallet_api::list_seeders_by_rating( const uint32_t count )const
    {
       return my->_remote_db->list_seeders_by_rating( count );
@@ -4468,7 +4704,12 @@ pair<account_id_type, vector<account_id_type>> wallet_api::get_author_and_co_aut
       fc::sha256 key1;
       aes_key.Encode((byte*)key1._hash, 32);
 
-      auto pack = PackageManager::instance().get_package(content_dir, samples_dir, key1);
+      uint32_t sectors;
+      if(my->head_block_time()>HARDFORK_1_TIME)
+         sectors = DECENT_SECTORS;
+      else
+         sectors = DECENT_SECTORS_BIG;
+      auto pack = PackageManager::instance().get_package(content_dir, samples_dir, key1, sectors);
       decent::encrypt::CustodyData cd = pack->get_custody_data();
       return std::pair<string, decent::encrypt::CustodyData>(pack->get_hash().str(), cd);
    }
@@ -4549,9 +4790,9 @@ void graphene::wallet::detail::submit_transfer_listener::package_seed_complete()
    // FC_ASSERT(!is_locked());
    }
 
-   void wallet_api::send_message(const std::string& from, string to, string text)
+   signed_transaction wallet_api::send_message(const std::string& from, string to, string text, bool broadcast)
    {
-      my->send_message(from, to, text);
+      return my->send_message(from, to, text, broadcast);
    }
 
    vector<message_object> wallet_api::get_message_objects(const std::string& receiver, uint32_t max_count) const
@@ -4559,6 +4800,11 @@ void graphene::wallet::detail::submit_transfer_listener::package_seed_complete()
       
       const auto& receiver_id = get_account_id(receiver);
       return my->get_message_objects(receiver_id, max_count);
+   }
+
+   vector<text_message> wallet_api::get_messages(const std::string& receiver, uint32_t max_count) const
+   {
+      return my->get_messages(receiver, max_count);
    }
 
 

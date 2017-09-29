@@ -33,7 +33,8 @@ struct real_supply{
    share_type account_balances = 0;
    share_type vesting_balances = 0;
    share_type escrows = 0;
-   share_type total() { return account_balances + vesting_balances + escrows;}
+   share_type pools = 0;
+   share_type total() { return account_balances + vesting_balances + escrows + pools;}
 };
 
 struct budget_record
@@ -112,7 +113,7 @@ FC_REFLECT(
       graphene::chain::real_supply,
       (account_balances)
       (vesting_balances)
-      (escrows)
+      (escrows)(pools)
 )
 FC_REFLECT_DERIVED(
    graphene::chain::budget_record_object,

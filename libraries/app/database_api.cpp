@@ -136,13 +136,15 @@ namespace graphene { namespace app {
       vector<asset_object>           list_assets(const string& lower_bound_symbol, uint32_t limit)const;
       vector<optional<asset_object>> lookup_asset_symbols(const vector<string>& symbols_or_ids)const;
       share_type get_new_asset_per_block() const;
-      share_type get_asset_per_block_by_block_num(uint32_t block_num) const;
+      share_type get_asset_per_block_by_block_num(uint32_t block_num)const;
+      asset price_to_dct( asset price )const;
 
       // Miners
       vector<optional<miner_object>> get_miners(const vector<miner_id_type>& miner_ids)const;
       fc::optional<miner_object> get_miner_by_account(account_id_type account)const;
       map<string, miner_id_type> lookup_miner_accounts(const string& lower_bound_name, uint32_t limit)const;
       uint64_t get_miner_count()const;
+      multimap< time_point_sec, price_feed> get_feeds_by_miner( const account_id_type account_id, uint32_t count)const;
       
       // Votes
       vector<variant> lookup_vote_ids( const vector<vote_id_type>& votes )const;
@@ -181,6 +183,7 @@ namespace graphene { namespace app {
       vector<seeder_object> list_publishers_by_price( const uint32_t count )const;
       optional<seeder_object> get_seeder(account_id_type) const;
       optional<vector<seeder_object>> list_seeders_by_upload( const uint32_t count )const;
+      vector<seeder_object> list_seeders_by_region( const string region_code )const;
       vector<seeder_object> list_seeders_by_rating( const uint32_t count )const;
       vector<subscription_object> list_active_subscriptions_by_consumer( const account_id_type& account, const uint32_t count )const;
       vector<subscription_object> list_subscriptions_by_consumer( const account_id_type& account, const uint32_t count )const;
@@ -1043,12 +1046,20 @@ namespace graphene { namespace app {
                      });
       return result;
    }
-   
 
+   asset database_api::price_to_dct( asset price )const
+   {
+      return my->price_to_dct( price );
+   }
+
+   asset database_api_impl::price_to_dct( asset price )const
+   {
+      return _db.price_to_dct( price );
+   }
    
    //////////////////////////////////////////////////////////////////////
    //                                                                  //
-   // Miners                                                        //
+   // Miners                                                           //
    //                                                                  //
    //////////////////////////////////////////////////////////////////////
    
@@ -1121,7 +1132,34 @@ namespace graphene { namespace app {
    {
       return _db.get_index_type<miner_index>().indices().size();
    }
-   
+
+   multimap< time_point_sec, price_feed> database_api::get_feeds_by_miner(const account_id_type account_id, const uint32_t count)const
+   {
+      return my->get_feeds_by_miner( account_id, count);
+   }
+
+   multimap< time_point_sec, price_feed> database_api_impl::get_feeds_by_miner(const account_id_type account_id, uint32_t count)const
+   {
+      FC_ASSERT( count <= 100 );
+      auto& asset_idx = _db.get_index_type<asset_index>().indices().get<by_type>();
+      auto mia_itr = asset_idx.lower_bound(true);
+
+      multimap< time_point_sec, price_feed> result;
+
+      while( mia_itr != asset_idx.end() && count-- )
+      {
+         const auto& itr = mia_itr->monitored_asset_opts->feeds.find(account_id);
+         if( itr != mia_itr->monitored_asset_opts->feeds.end() )
+            result.emplace( itr->second.first, itr->second.second );
+         else
+            count++;
+
+         mia_itr++;
+      }
+
+      return result;
+   }
+
    //////////////////////////////////////////////////////////////////////
    //                                                                  //
    // Votes                                                            //
@@ -1577,9 +1615,9 @@ namespace
          else if(order == "-size")
             search_buying_template<false, by_size>(_db, consumer, term, id, count, result);
          else if(order == "+price")
-            search_buying_template<true, by_price>(_db, consumer, term, id, count, result);
+            search_buying_template<true, by_price_before_exchange>(_db, consumer, term, id, count, result);
          else if(order == "-price")
-            search_buying_template<false, by_price>(_db, consumer, term, id, count, result);
+            search_buying_template<false, by_price_before_exchange>(_db, consumer, term, id, count, result);
          else if(order == "+created")
             search_buying_template<true, by_created>(_db, consumer, term, id, count, result);
          else if(order == "-created")
@@ -1643,6 +1681,7 @@ namespace
          secret.Encode((byte*)keys.key._hash, 32);
 
          uint32_t quorum = std::max((vector<account_id_type>::size_type)1, seeders.size()/3); // TODO_DECENT - quorum >= 2 see also content_submit_operation::validate
+
          ShamirSecret ss(quorum, seeders.size(), secret);
          ss.calculate_split();
          
@@ -2095,6 +2134,29 @@ namespace
       return result;
    }
 
+   vector<seeder_object> database_api::list_seeders_by_region( const string region_code )const
+   {
+      return my->list_seeders_by_region( region_code );
+   }
+
+   vector<seeder_object> database_api_impl::list_seeders_by_region( const string region_code )const
+   {
+      const auto& range = _db.get_index_type<seeder_index>().indices().get<by_region>().equal_range( region_code );
+      vector<seeder_object> result;
+
+      time_point_sec now = head_block_time();
+      auto itr = range.first;
+
+      while(itr != range.second )
+      {
+         if( itr->expiration > now )
+            result.emplace_back(*itr);
+         ++itr;
+      }
+
+      return result;
+   }
+
    vector<seeder_object> database_api::list_seeders_by_rating( uint32_t count )const
    {
       return my->list_seeders_by_rating( count );
@@ -2112,7 +2174,7 @@ namespace
 
       while(count-- && itr != idx.end())
       {
-         if( itr->expiration >= now )
+         if( itr->expiration > now )
             result.emplace_back(*itr);
          else
             ++count;
