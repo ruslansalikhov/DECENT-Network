@@ -28,6 +28,7 @@ bool IpfsWrapper::Initialize(const char* repo_path)
         return false;
     }
 
+    //NOTE: wait for start daemon ?
     m_started = true;
     return true;
 }
