@@ -419,7 +419,7 @@ func go_ipfs_cache_ls(c_fpath *C.char) (bool, *C.char) {
         }
     }
 
-    json_info, err := json.Marshal(output)
+    json_info, err := json.Marshal(output[0])
 
     //fmt.Println("AA:", string(json_info));
     return true, C.CString(string(json_info));

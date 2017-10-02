@@ -1,5 +1,5 @@
 
-#include "ipfs_wrapper.h"
+#include "ipfs_wrapper.hpp"
 #include <ipfs_bindings.h>
 #include <cstdlib>
 

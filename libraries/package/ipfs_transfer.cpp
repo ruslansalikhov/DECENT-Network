@@ -1,7 +1,7 @@
 /* (c) 2016, 2017 DECENT Services. For details refers to LICENSE.txt */
 
 #include "ipfs_transfer.hpp"
-#include "ipfs_wrapper.h"
+#include "ipfs_wrapper.hpp"
 
 #include <decent/package/package.hpp>
 #include <decent/package/package_config.hpp>
@@ -14,6 +14,8 @@
 #include <vector>
 #include <string>
 #include <regex>
+
+#include <pwd.h>
 
 namespace decent { namespace package {
 
@@ -32,16 +34,41 @@ namespace decent { namespace package {
             return false;
         }
 
+        const char* get_home_folder()
+        {
+            const char *homeDir = getenv("HOME");
+            if (!homeDir) {
+                struct passwd* pwd = getpwuid(getuid());
+                if (pwd) {
+                    homeDir = pwd->pw_dir;
+                }
+            }
+
+            return homeDir;
+        }
+
+        std::string get_ipfs_repo_path()
+        {
+            std::string repo_path(detail::get_home_folder());
+            repo_path += "/.ipfs";
+            return repo_path;
+        }
+
+
     } // namespace detail
 
 
     // _client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
 
     IPFSDownloadPackageTask::IPFSDownloadPackageTask(PackageInfo& package)
-        : detail::PackageTask(package)
+        : detail::PackageTask(package),
+          m_ipfs(IpfsWrapper::instance())
     {
-        if (!m_ipfs.Initialize("/Users/milanfranc/.ipfs")) {
-            throw std::runtime_error("ipfs could not initialized!");
+        if (!m_ipfs.IsStarted()) {
+
+            if (!m_ipfs.Initialize(detail::get_ipfs_repo_path().c_str() )) {
+                throw std::runtime_error("ipfs could not initialized!");
+            }
         }
     }
 
@@ -49,30 +76,34 @@ namespace decent { namespace package {
     {
         uint64_t size = 0;
 
-        std::string result;
-        bool ret = m_ipfs.ipfs_ls(url, result);
-        if(!ret) {
-            //TODO: error..
-            return 0;
-        }
+        std::string result, tmp_url;
+        std::stack<std::string> stack;
+        stack.push(url);
 
-        nlohmann::json  objects(result);
+        while(!stack.empty()) {
+            tmp_url = stack.top();
+            stack.pop();
 
-        for( auto nested_object : objects) {
-            nlohmann::json links = nested_object.at("Links");
+            bool ret = m_ipfs.ipfs_ls(url, result);
+            if(!ret) {
+                //TODO: error handling...
+                return 0;
+            }
+
+            nlohmann::json object = nlohmann::json::parse(result);
+            nlohmann::json links = object.at("Links");
 
             for (auto link : links) {
 
                 if((int) link.at("Type") == 1 ) //directory
                 {
-                    size += ipfs_recursive_get_size(link.at("Hash"));
+                    tmp_url = link.at("Hash");
+                    stack.push(tmp_url);
                 }
-
-                if((int) link.at("Type") == 2 ) //file
+                else if((int) link.at("Type") == 2 ) //file
                 {
                     size += (uint64_t) link.at("Size");
                 }
-
             }
         }
 
@@ -91,37 +122,34 @@ namespace decent { namespace package {
             throw std::runtime_error("package not found!");
         }
 
-        nlohmann::json  objects(result);
+        nlohmann::json object = nlohmann::json::parse(result);
+        nlohmann::json links = object.at("Links");
 
-        for( auto nested_object : objects) {
-            ilog("ipfs_recursive_get inside loop");
-            nlohmann::json links = nested_object.at("Links");
-
-            for( auto &link : links ) {
-                if((int) link.at("Type") == 1 ) //directory
-                {
-                    const auto dir_name = dest_path / link.at("Name");
-                    create_directories(dir_name);
-                    ipfs_recursive_get(link.at("Hash"), dir_name);
-                }
-                if((int) link.at("Type") == 2 ) //file
-                {
-                    uint64_t size = (uint64_t) link.at("Size");
-                    const std::string file_name = link.at("Name");
-                    const std::string file_obj_id = link.at("Hash");
-
-                    std::string filename = (dest_path / file_name).string();
-
-                    ret = m_ipfs.ipfs_get(file_obj_id, filename);
-                    if (!ret) {
-                        //TODO: error....
-                    }
-
-                    _package._downloaded_size += size;
-                }
-                PACKAGE_TASK_EXIT_IF_REQUESTED;
+        for( auto &link : links ) {
+            if((int) link.at("Type") == 1 ) //directory
+            {
+                const auto dir_name = dest_path / link.at("Name");
+                create_directories(dir_name);
+                ipfs_recursive_get(link.at("Hash"), dir_name);
             }
+            else if((int) link.at("Type") == 2 ) //file
+            {
+                uint64_t size = (uint64_t) link.at("Size");
+                const std::string file_name = link.at("Name");
+                const std::string file_obj_id = link.at("Hash");
+
+                std::string filename = (dest_path / file_name).string();
+
+                ret = m_ipfs.ipfs_get(file_obj_id, filename);
+                if (!ret) {
+                    //TODO: error....
+                }
+
+                _package._downloaded_size += size;
+            }
+            PACKAGE_TASK_EXIT_IF_REQUESTED;
         }
+
     }
 
     void IPFSDownloadPackageTask::task() {
@@ -207,11 +235,15 @@ namespace decent { namespace package {
         }
     }
 
-    // , _client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
-
     IPFSStartSeedingPackageTask::IPFSStartSeedingPackageTask(PackageInfo& package)
-        : detail::PackageTask(package)
+        : detail::PackageTask(package),
+          m_ipfs(IpfsWrapper::instance())
     {
+        if (!m_ipfs.IsStarted()) {
+            if (!m_ipfs.Initialize(detail::get_ipfs_repo_path().c_str() )) {
+                throw std::runtime_error("ipfs could not initialized!");
+            }
+        }
     }
 
     void IPFSStartSeedingPackageTask::task() {
@@ -310,11 +342,15 @@ namespace decent { namespace package {
         }
     }
 
-    // , _client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
-
     IPFSStopSeedingPackageTask::IPFSStopSeedingPackageTask(PackageInfo& package)
-        : detail::PackageTask(package)
+        : detail::PackageTask(package),
+          m_ipfs(IpfsWrapper::instance())
     {
+        if (!m_ipfs.IsStarted()) {
+            if (!m_ipfs.Initialize(detail::get_ipfs_repo_path().c_str()  )) {
+                throw std::runtime_error("ipfs could not initialized!");
+            }
+        }
     }
 
     void IPFSStopSeedingPackageTask::task() {
@@ -327,11 +363,7 @@ namespace decent { namespace package {
                 FC_THROW("'${url}' is not an ipfs NURI", ("url", _package._url));
             }
 
-#if 0
-
-            _client.PinRm(obj_id, ipfs::Client::PinRmOptions::RECURSIVE);
-
-#endif
+            m_ipfs.ipfs_pin_rem(obj_id, true);
 
             PACKAGE_INFO_CHANGE_TRANSFER_STATE(TS_IDLE);
         }

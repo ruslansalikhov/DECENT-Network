@@ -6,7 +6,7 @@
 
 #include <decent/package/package.hpp>
 
-#include <ipfs_wrapper.h>
+#include <ipfs_wrapper.hpp>
 
 #include <memory>
 
@@ -30,7 +30,7 @@ namespace decent { namespace package {
         virtual bool is_base_class() override { return false; }
 
     private:
-        IpfsWrapper m_ipfs;
+        IpfsWrapper& m_ipfs;
     };
 
 
@@ -45,7 +45,7 @@ namespace decent { namespace package {
         virtual bool is_base_class() override { return false; }
 
     private:
-        IpfsWrapper m_ipfs;
+        IpfsWrapper& m_ipfs;
     };
 
 
@@ -57,8 +57,10 @@ namespace decent { namespace package {
         virtual void task() override;
 
     private:
-        //ipfs::Client _client;
         virtual bool is_base_class() override { return false; }
+
+    private:
+        IpfsWrapper& m_ipfs;
     };
 
 

@@ -5,14 +5,25 @@
 
 class IpfsWrapper
 {
+private:
+    explicit IpfsWrapper();
+
 public:
-    IpfsWrapper();
+    IpfsWrapper(const IpfsWrapper&) = delete;
+    IpfsWrapper& operator=(const IpfsWrapper&) = delete;
     ~IpfsWrapper();
+
+    static IpfsWrapper& instance() {
+        static IpfsWrapper the_IPFS_manager;
+        return the_IPFS_manager;
+    }
 
     /**
      * @brief Initialize IPFS
      */
     bool Initialize(const char* repo_path);
+
+    bool IsStarted() const { return m_started; }
 
     /**
      * @return returns IPFS peer ID
