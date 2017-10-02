@@ -34,22 +34,9 @@ namespace decent { namespace package {
             return false;
         }
 
-        const char* get_home_folder()
-        {
-            const char *homeDir = getenv("HOME");
-            if (!homeDir) {
-                struct passwd* pwd = getpwuid(getuid());
-                if (pwd) {
-                    homeDir = pwd->pw_dir;
-                }
-            }
-
-            return homeDir;
-        }
-
         std::string get_ipfs_repo_path()
         {
-            std::string repo_path(detail::get_home_folder());
+            std::string repo_path(graphene::utilities::decent_path_finder::instance().get_user_home().string());
             repo_path += "/.ipfs";
             return repo_path;
         }
