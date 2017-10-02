@@ -88,8 +88,7 @@ namespace decent { namespace package {
         std::string result;
         bool ret = m_ipfs.ipfs_ls(url, result);
         if (!ret) {
-            //TODO: error..
-            return;
+            throw std::runtime_error("package not found!");
         }
 
         nlohmann::json  objects(result);
@@ -110,11 +109,13 @@ namespace decent { namespace package {
                     uint64_t size = (uint64_t) link.at("Size");
                     const std::string file_name = link.at("Name");
                     const std::string file_obj_id = link.at("Hash");
-                    std::fstream myfile((dest_path / file_name).string(), std::ios::out | std::ios::binary);
 
-#if 0
-                    _client.FilesGet(file_obj_id, &myfile);
-#endif
+                    std::string filename = (dest_path / file_name).string();
+
+                    ret = m_ipfs.ipfs_get(file_obj_id, filename);
+                    if (!ret) {
+                        //TODO: error....
+                    }
 
                     _package._downloaded_size += size;
                 }

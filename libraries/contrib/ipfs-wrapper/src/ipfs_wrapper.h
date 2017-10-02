@@ -36,6 +36,14 @@ public:
     bool ipfs_ls(const std::string& cid, std::string& json_info);
 
     /**
+     * @brief performs IPFS get on given cid
+     * @param cid - CID
+     * @param filename - filename to store content
+     * @return returns TRUE if success otherwise false
+     */
+    bool ipfs_get(const std::string& cid, const std::string& filename);
+
+    /**
      * @brief performs IPFS pin add on given cid
      * @param cid - CID
      * @param recursive resulting CID

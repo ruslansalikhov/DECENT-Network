@@ -68,6 +68,11 @@ bool IpfsWrapper::ipfs_ls(const std::string& cid, std::string& json_info)
     return true;
 }
 
+bool IpfsWrapper::ipfs_get(const std::string& cid, const std::string& filename)
+{
+    return go_ipfs_cache_get(const_cast<char*>(cid.c_str()), const_cast<char*>(filename.c_str()) );
+}
+
 bool IpfsWrapper::ipfs_pin_add(const std::string& cid, bool recursive)
 {
     return go_ipfs_cache_pin_add(const_cast<char*>(cid.c_str()), recursive);
