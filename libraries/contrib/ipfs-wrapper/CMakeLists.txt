@@ -4,6 +4,10 @@ include(ExternalProject)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-3")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3")
+
+
 ################################################################################
 # TODO(peterj): Address sanitizer seems to cause segmentation faults on exit
 #               from main(?).
@@ -41,7 +45,7 @@ include_directories(
 
 set(IPFS_WRAPPER_FILES
     src/ipfs_wrapper.cpp
-    src/ipfs_wrapper.h
+        src/ipfs_wrapper.hpp
 )
 
 add_library(ipfs-wrapper STATIC

@@ -15,6 +15,8 @@ import (
 	"io"
 	"io/ioutil"
 	"bufio"
+	"strings"
+	"path/filepath"
 	core "github.com/ipfs/go-ipfs/core"
 	repo "github.com/ipfs/go-ipfs/repo"
 	fsrepo "github.com/ipfs/go-ipfs/repo/fsrepo"
@@ -28,6 +30,13 @@ import (
 	unixfspb "github.com/ipfs/go-ipfs/unixfs/pb"
 	merkledag "github.com/ipfs/go-ipfs/merkledag"
 	unixfs "github.com/ipfs/go-ipfs/unixfs"
+//	"github.com/ipfs/go-ipfs/pin"
+//	bstore "github.com/ipfs/go-ipfs/blocks/blockstore"
+//	dag "github.com/ipfs/go-ipfs/merkledag"
+//	mfs "github.com/ipfs/go-ipfs/mfs"
+//	bs "github.com/ipfs/go-ipfs/blocks/blockstore"
+    "github.com/ipfs/go-ipfs/commands/files"
+
 
 	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
 	node "gx/ipfs/QmPN7cwmpcc4DWXb4KTB9dNAJgjuPY69h3npsMfhRrQL9c/go-ipld-format"
@@ -268,6 +277,103 @@ func go_ipfs_cache_file_add(c_filename *C.char) (bool, *C.char) {
     result := C.CString(cid)
     return true, result;
 }
+
+
+//export go_ipfs_cache_file_add_wrapped
+func go_ipfs_cache_file_add_wrapped(c_filename *C.char, c_dir_path *C.char) (bool, *C.char) {
+    filename := C.GoString(c_filename)
+    dir_path := C.GoString(c_dir_path)
+
+    if debug {
+        fmt.Println("go_ipfs_cache_file_add_wrapped start");
+        defer fmt.Println("go_ipfs_cache_file_add_wrapped end");
+    }
+
+    file,err := os.Open(filename)
+    if err != nil {
+        fmt.Println("Error: open failed! ", err)
+        return false, nil;
+    }
+    defer file.Close()
+
+    cid, dagn, err := coreunix.AddWrapped(g.node, bufio.NewReader(file), dir_path)
+    if err != nil {
+        return false, nil;
+    }
+
+    s := []string{ cid, dagn.Cid().String() }
+    aaa := strings.Join(s, " ")
+
+    result := C.CString(aaa)
+    return true, result;
+}
+
+type Message struct {
+    Name string
+    Filename string
+}
+
+//export go_ipfs_cache_add_files_wrapped
+func go_ipfs_cache_add_files_wrapped(c_json_param *C.char) (bool, *C.char) {
+    json_blob := C.GoString(c_json_param)
+
+    var files_to_add []Message
+    err := json.Unmarshal([]byte(json_blob), &files_to_add)
+    if err != nil {
+        return false, nil
+    }
+
+    fileAdder, err := coreunix.NewAdder(g.node.Context(), g.node.Pinning, g.node.Blockstore, g.node.DAG)
+	if err != nil {
+		return false, nil
+	}
+	fileAdder.Wrap = true
+	fileAdder.Pin = false
+
+    defer g.node.Blockstore.PinLock().Unlock()
+
+    //enum all files...
+    for i := range files_to_add {
+
+        fmt.Printf("%+v", files_to_add[i])
+
+        var item Message = files_to_add[i]
+
+        f, err := os.Open(item.Filename)
+        if err != nil {
+            fmt.Println("Error: open failed! ", err)
+            return false, nil;
+        }
+        defer f.Close()
+
+        dir_name, file_name := filepath.Split(item.Name)
+
+        file := files.NewReaderFile(file_name, dir_name, ioutil.NopCloser(f), nil)
+
+        err = fileAdder.AddFile(file)
+        if err != nil {
+            fmt.Printf("fileAdder.AddFile failed!")
+            return false, nil
+        }
+
+        fmt.Printf("\n")
+    }
+
+    fmt.Printf(".\n")
+
+	dagnode, err := fileAdder.Finalize()
+	if err != nil {
+		return false, nil
+	}
+
+    c := dagnode.Cid()
+
+    fmt.Println("Cid: ", c.String() )
+    fmt.Println("Node: ", dagnode.String() )
+
+    return true, C.CString("")
+}
+
 
 //export go_ipfs_cache_get
 func go_ipfs_cache_get(c_file_obj_id *C.char, c_filename *C.char) bool {

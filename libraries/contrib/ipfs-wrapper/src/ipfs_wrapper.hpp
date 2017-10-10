@@ -33,10 +33,14 @@ public:
     /**
      * @brief adds file to IPFS and returns CID
      * @param filename filename of the file to add
+     * @param ipfs_url ipfs url name
      * @param cid resulting CID
      * @return returns TRUE if success otherwise false
      */
-    bool ipfs_file_add(const std::string& filename, std::string& cid);
+    bool ipfs_file_add(const std::string& filename, const std::string& ipfs_url, std::string& cid);
+
+
+    bool ipfs_files_add_wrapped(const std::string& json_param, std::string& cid);
 
     /**
      * @brief IPFS ls on given cid
@@ -82,6 +86,36 @@ private:
     bool m_started;
 
 };
+
+namespace ipfs {
+
+    namespace detail {
+
+        /** HTTP file upload. */
+        struct FileUpload {
+            /** The type of the `data` member. */
+            enum class Type {
+                /** The file contents, put into a string by the caller. For small files. */
+                        kFileContents,
+                /** File whose contents is streamed to the web server. For big files. */
+                        kFileName,
+            };
+
+            /** File name to pretend to the web server. */
+            const std::string path;
+
+            /** The type of the `data` member. */
+            Type type;
+
+            /** The data to be added. Either a file name from which to read the data or
+             * the contents itself. */
+            const std::string data;
+        };
+
+    }; //namespace detail
+}; //namespace ipfs
+
+
 
 
 #endif //DECENT_IPFSWRAPPER_H

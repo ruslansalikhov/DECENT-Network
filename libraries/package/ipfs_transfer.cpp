@@ -45,8 +45,6 @@ namespace decent { namespace package {
     } // namespace detail
 
 
-    // _client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
-
     IPFSDownloadPackageTask::IPFSDownloadPackageTask(PackageInfo& package)
         : detail::PackageTask(package),
           m_ipfs(IpfsWrapper::instance())
@@ -238,7 +236,6 @@ namespace decent { namespace package {
 
         try {
             PACKAGE_TASK_EXIT_IF_REQUESTED;
-#if 0
             std::set<boost::filesystem::path> paths_to_skip;
             paths_to_skip.insert(_package.get_package_state_dir());
             paths_to_skip.insert(_package.get_lock_file_path());
@@ -246,7 +243,7 @@ namespace decent { namespace package {
             std::vector<boost::filesystem::path> files;
             detail::get_files_recursive_except(_package.get_package_dir(), files, paths_to_skip);
 
-            std::vector<ipfs::http::FileUpload> files_to_add;
+            std::vector<ipfs::detail::FileUpload> files_to_add;
 
             const auto package_base_path = _package._parent_dir.lexically_normal();
 
@@ -274,28 +271,46 @@ namespace decent { namespace package {
                 files_to_add.push_back({ file_relPath_UnixPathDelim, ipfs::http::FileUpload::Type::kFileName, fileUnixPathDelim });
 #else
                 const auto file_rel_path = detail::get_relative(package_base_path, file.lexically_normal());
-               files_to_add.push_back({ file_rel_path.string(), ipfs::http::FileUpload::Type::kFileName, file.string() });
+               files_to_add.push_back({ file_rel_path.string(), ipfs::detail::FileUpload::Type::kFileName, file.string() });
 #endif
             }
-#endif //0
-
 
             PACKAGE_INFO_CHANGE_TRANSFER_STATE(SEEDING);
 
-#if 0
 
-            ipfs::Json added_files;
-            _client.FilesAdd(files_to_add, &added_files);
+            nlohmann::json json_blob;
+            for(const auto& file : files_to_add) {
 
-//          PACKAGE_INFO_GENERATE_EVENT(package_seed_progress, ( ) );
+                nlohmann::json object;
+                object["Name"] = file.path;
+                object["Filename"] = file.data;
 
+
+                json_blob.push_back(object);
+            }
+
+            bool ret;
             std::string root_hash;
-            for (auto& added_file : added_files) {
-                if (added_file.at("path") == _package._hash.str()) {
-                    root_hash = added_file.at("hash");
+            ret = m_ipfs.ipfs_files_add_wrapped(json_blob.dump(), root_hash);
+
+
+
+
+/*
+            for(const auto& file : files_to_add) {
+                FC_ASSERT(file.type == ipfs::detail::FileUpload::Type::kFileName, "Only files!");
+                ret = m_ipfs.ipfs_file_add(file.data, file.path, cid);
+                //TODO: error handling...
+
+                if (root_hash.empty() && cid == _package._hash.str()) {
+                    root_hash = cid;
                     break;
                 }
             }
+*/
+
+
+//          PACKAGE_INFO_GENERATE_EVENT(package_seed_progress, ( ) );
 
             if (root_hash.empty()) {
                 FC_THROW("Unable to find root hash in 'ipfs add' results");
@@ -303,11 +318,9 @@ namespace decent { namespace package {
 
             _package._url = "ipfs:" + root_hash;
 
-            _client.PinAdd(root_hash); // just in case
+            m_ipfs.ipfs_pin_add(root_hash, true); // just in case
 
             // TODO: remove the actual files?
-
-#endif
 
             PACKAGE_INFO_CHANGE_TRANSFER_STATE(SEEDING);
             PACKAGE_INFO_GENERATE_EVENT(package_seed_complete, ( ) );

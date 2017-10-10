@@ -44,10 +44,22 @@ std::string IpfsWrapper::ipfs_id()
     return result;
 }
 
-bool IpfsWrapper::ipfs_file_add(const std::string& filename, std::string& cid)
+bool IpfsWrapper::ipfs_file_add(const std::string& filename, const std::string& ipfs_url, std::string& cid)
 {
-    go_ipfs_cache_file_add_return ret_val;
-    ret_val = go_ipfs_cache_file_add(const_cast<char*>(filename.c_str()) );
+    go_ipfs_cache_file_add_wrapped_return ret_val;
+    ret_val = go_ipfs_cache_file_add_wrapped(const_cast<char*>(filename.c_str()), const_cast<char*>(ipfs_url.c_str()) );
+    if (! (bool)ret_val.r0) {
+        return false;
+    }
+
+    cid = std::string(ret_val.r1); free(ret_val.r1);
+    return true;
+}
+
+bool IpfsWrapper::ipfs_files_add_wrapped(const std::string& json_param, std::string& cid)
+{
+    go_ipfs_cache_add_files_wrapped_return ret_val;
+    ret_val = go_ipfs_cache_add_files_wrapped(const_cast<char*>(json_param.c_str()) );
     if (! (bool)ret_val.r0) {
         return false;
     }
