@@ -366,12 +366,11 @@ func go_ipfs_cache_add_files_wrapped(c_json_param *C.char) (bool, *C.char) {
 		return false, nil
 	}
 
-    c := dagnode.Cid()
+    if debug {
+        fmt.Println("Cid: ", dagnode.String() )
+    }
 
-    fmt.Println("Cid: ", c.String() )
-    fmt.Println("Node: ", dagnode.String() )
-
-    return true, C.CString("")
+    return true, C.CString(dagnode.String() )
 }
 
 
