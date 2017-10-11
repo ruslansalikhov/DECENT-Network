@@ -69,9 +69,9 @@ namespace decent { namespace package {
             tmp_url = stack.top();
             stack.pop();
 
-            bool ret = m_ipfs.ipfs_ls(url, result);
+            bool ret = m_ipfs.ipfs_ls(tmp_url, result);
             if(!ret) {
-                //TODO: error handling...
+                throw std::runtime_error("IPFS: ls failed!");
                 return 0;
             }
 
@@ -127,7 +127,7 @@ namespace decent { namespace package {
 
                 ret = m_ipfs.ipfs_get(file_obj_id, filename);
                 if (!ret) {
-                    //TODO: error....
+                    throw std::runtime_error("IPFS: get failed!");
                 }
 
                 _package._downloaded_size += size;
@@ -247,6 +247,10 @@ namespace decent { namespace package {
 
             const auto package_base_path = _package._parent_dir.lexically_normal();
 
+            auto temp_base_path = package_base_path;
+            temp_base_path += boost::filesystem::path::preferred_separator;
+            temp_base_path += _package._hash.str();
+
             for (auto& file : files) {
 #ifdef _MSC_VER 
                 std::string fileUnixPathDelim = file.string();
@@ -270,14 +274,14 @@ namespace decent { namespace package {
                 }
                 files_to_add.push_back({ file_relPath_UnixPathDelim, ipfs::http::FileUpload::Type::kFileName, fileUnixPathDelim });
 #else
-                const auto file_rel_path = detail::get_relative(package_base_path, file.lexically_normal());
-               files_to_add.push_back({ file_rel_path.string(), ipfs::detail::FileUpload::Type::kFileName, file.string() });
+                const auto file_rel_path = detail::get_relative(temp_base_path, file.lexically_normal());
+                files_to_add.push_back({ file_rel_path.string(), ipfs::detail::FileUpload::Type::kFileName, file.string() });
 #endif
             }
 
             PACKAGE_INFO_CHANGE_TRANSFER_STATE(SEEDING);
 
-
+            //add files info into Json object array
             nlohmann::json json_blob;
             for(const auto& file : files_to_add) {
 
@@ -285,29 +289,15 @@ namespace decent { namespace package {
                 object["Name"] = file.path;
                 object["Filename"] = file.data;
 
-
                 json_blob.push_back(object);
             }
 
             bool ret;
             std::string root_hash;
             ret = m_ipfs.ipfs_files_add_wrapped(json_blob.dump(), root_hash);
-
-
-
-
-/*
-            for(const auto& file : files_to_add) {
-                FC_ASSERT(file.type == ipfs::detail::FileUpload::Type::kFileName, "Only files!");
-                ret = m_ipfs.ipfs_file_add(file.data, file.path, cid);
-                //TODO: error handling...
-
-                if (root_hash.empty() && cid == _package._hash.str()) {
-                    root_hash = cid;
-                    break;
-                }
+            if (!ret) {
+                FC_THROW("IPFS error!");
             }
-*/
 
 
 //          PACKAGE_INFO_GENERATE_EVENT(package_seed_progress, ( ) );
@@ -363,7 +353,9 @@ namespace decent { namespace package {
                 FC_THROW("'${url}' is not an ipfs NURI", ("url", _package._url));
             }
 
-            m_ipfs.ipfs_pin_rem(obj_id, true);
+            if(!m_ipfs.ipfs_pin_rem(obj_id, true)) {
+                throw std::runtime_error("ipfs pin rm failed!");
+            }
 
             PACKAGE_INFO_CHANGE_TRANSFER_STATE(TS_IDLE);
         }

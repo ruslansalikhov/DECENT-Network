@@ -16,7 +16,6 @@ import (
 	"io/ioutil"
 	"bufio"
 	"strings"
-	"path/filepath"
 	core "github.com/ipfs/go-ipfs/core"
 	repo "github.com/ipfs/go-ipfs/repo"
 	fsrepo "github.com/ipfs/go-ipfs/repo/fsrepo"
@@ -30,13 +29,7 @@ import (
 	unixfspb "github.com/ipfs/go-ipfs/unixfs/pb"
 	merkledag "github.com/ipfs/go-ipfs/merkledag"
 	unixfs "github.com/ipfs/go-ipfs/unixfs"
-//	"github.com/ipfs/go-ipfs/pin"
-//	bstore "github.com/ipfs/go-ipfs/blocks/blockstore"
-//	dag "github.com/ipfs/go-ipfs/merkledag"
-//	mfs "github.com/ipfs/go-ipfs/mfs"
-//	bs "github.com/ipfs/go-ipfs/blocks/blockstore"
     "github.com/ipfs/go-ipfs/commands/files"
-
 
 	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
 	node "gx/ipfs/QmPN7cwmpcc4DWXb4KTB9dNAJgjuPY69h3npsMfhRrQL9c/go-ipld-format"
@@ -346,9 +339,7 @@ func go_ipfs_cache_add_files_wrapped(c_json_param *C.char) (bool, *C.char) {
         }
         defer f.Close()
 
-        dir_name, file_name := filepath.Split(item.Name)
-
-        file := files.NewReaderFile(file_name, dir_name, ioutil.NopCloser(f), nil)
+        file := files.NewReaderFile(item.Name, item.Name, ioutil.NopCloser(f), nil)
 
         err = fileAdder.AddFile(file)
         if err != nil {

@@ -7,6 +7,7 @@
 
 #include <thread>
 #include <iostream>
+#include <json.hpp>
 
 
 using namespace decent::package;
@@ -89,10 +90,8 @@ public:
 };
 
 
-
 void pm_sandbox()
 {
-
     auto& package_manager = decent::package::PackageManager::instance();
 
     package_manager.recover_all_packages();
@@ -106,6 +105,8 @@ void pm_sandbox()
 
 
     {
+
+#if 1
         auto package_handle = package_manager.get_package(content_dir, samples_dir, key, DECENT_SECTORS);
         package_handle->add_event_listener(std::make_shared<MyEventListener>());
 
@@ -147,9 +148,13 @@ void pm_sandbox()
 
 
         package_manager.release_package(package_handle);
+#endif
+    }
 
 
-        package_handle = package_manager.get_package("/ipfs/QmWgZbg73wrgicmPradJcK51nY99o2fX8dt7pBJ8rUaurJ", fc::ripemd160());
+    {
+#if 0
+        auto package_handle = package_manager.get_package("ipfs:QmQLhthQjyQRU65eJX7Tp2WSRahn3c9NQk1NLwKwTACxKN", fc::ripemd160());
         package_handle->add_event_listener(std::make_shared<MyEventListener>());
 
         {
@@ -178,9 +183,27 @@ void pm_sandbox()
                 std::rethrow_exception(ex_ptr);
             }
         }
+
+        package_manager.release_all_packages();
+#endif
     }
 
-    package_manager.release_all_packages();
+    {
+#if 0
+        auto package_handle = package_manager.get_package("ipfs:QmQLhthQjyQRU65eJX7Tp2WSRahn3c9NQk1NLwKwTACxKN",
+                                                          fc::ripemd160());
+        package_handle->add_event_listener(std::make_shared<MyEventListener>());
+
+        {
+            package_handle->stop_seeding();
+            package_handle->wait_for_current_task();
+            auto ex_ptr = package_handle->get_task_last_error();
+            if (ex_ptr) {
+                std::rethrow_exception(ex_ptr);
+            }
+        }
+#endif
+    }
 
 
 /*
