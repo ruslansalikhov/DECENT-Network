@@ -20,8 +20,9 @@ public:
 
     /**
      * @brief Initialize IPFS
+     * @param repo_path - path to IPFS repository or nullptr to get default
      */
-    bool Initialize(const char* repo_path);
+    bool Initialize(const char* repo_path = nullptr);
 
     bool IsStarted() const { return m_started; }
 

@@ -3,6 +3,8 @@
 #include <ipfs_bindings.h>
 #include <cstdlib>
 
+#include <graphene/utilities/dirhelper.hpp>
+
 IpfsWrapper::IpfsWrapper() : m_started(false)
 {
 }
@@ -21,6 +23,14 @@ bool IpfsWrapper::Initialize(const char* repo_path)
         m_started = false;
 
         //NOTE: maybe some sleep...
+    }
+
+    std::string user_repo_path;
+    if (repo_path == nullptr) {
+        user_repo_path = graphene::utilities::decent_path_finder::instance().get_user_home().string();
+        user_repo_path += "/.ipfs";
+
+        repo_path = user_repo_path.c_str();
     }
 
     bool ret = go_ipfs_cache_start(const_cast<char*>(repo_path) );

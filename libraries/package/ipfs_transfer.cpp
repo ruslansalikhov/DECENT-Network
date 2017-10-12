@@ -22,7 +22,6 @@ namespace decent { namespace package {
 
     namespace detail {
 
-
         bool parse_ipfs_url(const std::string& url, std::string& obj_id) {
             const std::string ipfs = "ipfs:";
             if (url.substr(0, ipfs.size()) == ipfs) {
@@ -34,14 +33,6 @@ namespace decent { namespace package {
             return false;
         }
 
-        std::string get_ipfs_repo_path()
-        {
-            std::string repo_path(graphene::utilities::decent_path_finder::instance().get_user_home().string());
-            repo_path += "/.ipfs";
-            return repo_path;
-        }
-
-
     } // namespace detail
 
 
@@ -51,7 +42,7 @@ namespace decent { namespace package {
     {
         if (!m_ipfs.IsStarted()) {
 
-            if (!m_ipfs.Initialize(detail::get_ipfs_repo_path().c_str() )) {
+            if (!m_ipfs.Initialize()) {
                 throw std::runtime_error("ipfs could not initialized!");
             }
         }
@@ -225,7 +216,7 @@ namespace decent { namespace package {
           m_ipfs(IpfsWrapper::instance())
     {
         if (!m_ipfs.IsStarted()) {
-            if (!m_ipfs.Initialize(detail::get_ipfs_repo_path().c_str() )) {
+            if (!m_ipfs.Initialize()) {
                 throw std::runtime_error("ipfs could not initialized!");
             }
         }
@@ -337,7 +328,7 @@ namespace decent { namespace package {
           m_ipfs(IpfsWrapper::instance())
     {
         if (!m_ipfs.IsStarted()) {
-            if (!m_ipfs.Initialize(detail::get_ipfs_repo_path().c_str()  )) {
+            if (!m_ipfs.Initialize()) {
                 throw std::runtime_error("ipfs could not initialized!");
             }
         }
