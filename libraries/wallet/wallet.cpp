@@ -82,7 +82,7 @@
 
 #include <fc/smart_ref_impl.hpp>
 #include "json.hpp"
-//#include "ipfs/client.h"
+#include <ipfs_wrapper.hpp>
 #include <decent/package/package_config.hpp>
 #include <graphene/chain/hardfork.hpp>
 
@@ -122,9 +122,10 @@ private:
 
 struct ipfs_stats_listener : public EventListenerInterface{
 
-   ipfs_stats_listener(string URI, wallet_api_impl& api, account_id_type consumer):_URI(URI), _wallet(api), _consumer(consumer)
-         //  ,_ipfs_client(PackageManagerConfigurator::instance().get_ipfs_host(), PackageManagerConfigurator::instance().get_ipfs_port())
-   {}
+   ipfs_stats_listener(string URI, wallet_api_impl& api, account_id_type consumer):_URI(URI), _wallet(api), _consumer(consumer),
+         _ipfs_client(ipfs::IpfsWrapper::instance())
+   {
+   }
 
    virtual void package_download_start();
    virtual void package_download_complete();
@@ -134,7 +135,7 @@ private:
    string            _URI;
    wallet_api_impl&  _wallet;
    account_id_type   _consumer;
-   //ipfs::Client      _ipfs_client;
+   ipfs::IpfsWrapper&      _ipfs_client;
 };
 
 struct submit_transfer_listener : public EventListenerInterface {
@@ -3271,14 +3272,15 @@ std::string operation_printer::operator()(const leave_rating_and_comment_operati
       {
          for( const auto& element : new_seeders )
          {
-            const string ipfs_ID = _wallet._remote_db->get_seeder( element )->ipfs_ID;
-#if 0 //WORKING
-            ipfs::Json json;
-            _ipfs_client.BitswapLedger( ipfs_ID, &json );
+            const std::string& ipfs_ID = _wallet._remote_db->get_seeder( element )->ipfs_ID;
+            std::string json_blob;
+            _ipfs_client.ipfs_bitswap_ledger( ipfs_ID, json_blob );
+
+            nlohmann::json json = nlohmann::json::parse(json_blob);
+
             uint64_t received = json["Recv"];
             wlog( "IPFS stats: package download start: ${r} bytes from ${id}", ("r", received)("id", ipfs_ID));
             _wallet._seeders_tracker.set_initial_stats( element, received );
-#endif
          }
       }
    }
@@ -3292,17 +3294,18 @@ std::string operation_printer::operator()(const leave_rating_and_comment_operati
          map<account_id_type,uint64_t> stats;
          for( const auto& element : finished_seeders )
          {
-            const string ipfs_ID = _wallet._remote_db->get_seeder( element )->ipfs_ID;
-#if 0 //WORKING
-            ipfs::Json json;
-            _ipfs_client.BitswapLedger( ipfs_ID, &json );
-            uint64_t received = json["Recv"];
-            difference = _wallet._seeders_tracker.get_final_stats( element, received );
-            wlog( "IPFS stats: package download complete: received ${r} bytes from ${id}, difference: ${diff}", ("r", received)("id", ipfs_ID)("diff", difference));
-            stats.emplace( element, difference );
+             const std::string& ipfs_ID = _wallet._remote_db->get_seeder( element )->ipfs_ID;
+             std::string json_blob;
+             _ipfs_client.ipfs_bitswap_ledger( ipfs_ID, json_blob );
 
-            _wallet._seeders_tracker.remove_stats( element );
-#endif
+             nlohmann::json json = nlohmann::json::parse(json_blob);
+
+             uint64_t received = json["Recv"];
+             difference = _wallet._seeders_tracker.get_final_stats( element, received );
+             wlog( "IPFS stats: package download complete: received ${r} bytes from ${id}, difference: ${diff}", ("r", received)("id", ipfs_ID)("diff", difference));
+             stats.emplace( element, difference );
+
+             _wallet._seeders_tracker.remove_stats( element );
          }
 
          report_stats_operation op;

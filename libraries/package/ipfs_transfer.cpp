@@ -38,14 +38,8 @@ namespace decent { namespace package {
 
     IPFSDownloadPackageTask::IPFSDownloadPackageTask(PackageInfo& package)
         : detail::PackageTask(package),
-          m_ipfs(IpfsWrapper::instance())
+          m_ipfs(ipfs::IpfsWrapper::instance())
     {
-        if (!m_ipfs.IsStarted()) {
-
-            if (!m_ipfs.Initialize()) {
-                throw std::runtime_error("ipfs could not initialized!");
-            }
-        }
     }
 
     uint64_t IPFSDownloadPackageTask::ipfs_recursive_get_size(const std::string &url)
@@ -213,13 +207,8 @@ namespace decent { namespace package {
 
     IPFSStartSeedingPackageTask::IPFSStartSeedingPackageTask(PackageInfo& package)
         : detail::PackageTask(package),
-          m_ipfs(IpfsWrapper::instance())
+          m_ipfs(ipfs::IpfsWrapper::instance())
     {
-        if (!m_ipfs.IsStarted()) {
-            if (!m_ipfs.Initialize()) {
-                throw std::runtime_error("ipfs could not initialized!");
-            }
-        }
     }
 
     void IPFSStartSeedingPackageTask::task() {
@@ -325,13 +314,8 @@ namespace decent { namespace package {
 
     IPFSStopSeedingPackageTask::IPFSStopSeedingPackageTask(PackageInfo& package)
         : detail::PackageTask(package),
-          m_ipfs(IpfsWrapper::instance())
+          m_ipfs(ipfs::IpfsWrapper::instance())
     {
-        if (!m_ipfs.IsStarted()) {
-            if (!m_ipfs.Initialize()) {
-                throw std::runtime_error("ipfs could not initialized!");
-            }
-        }
     }
 
     void IPFSStopSeedingPackageTask::task() {

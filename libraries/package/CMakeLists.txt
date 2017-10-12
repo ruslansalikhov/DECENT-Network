@@ -3,6 +3,9 @@ file( GLOB HEADERS "*.hpp" "include/package/package/*.hpp" )
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-3")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3")
+
 add_library( package_manager
              package.cpp
              detail.cpp

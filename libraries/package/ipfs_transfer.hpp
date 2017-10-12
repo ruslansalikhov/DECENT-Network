@@ -30,7 +30,7 @@ namespace decent { namespace package {
         virtual bool is_base_class() override { return false; }
 
     private:
-        IpfsWrapper& m_ipfs;
+        ipfs::IpfsWrapper& m_ipfs;
     };
 
 
@@ -45,7 +45,7 @@ namespace decent { namespace package {
         virtual bool is_base_class() override { return false; }
 
     private:
-        IpfsWrapper& m_ipfs;
+        ipfs::IpfsWrapper& m_ipfs;
     };
 
 
@@ -60,7 +60,7 @@ namespace decent { namespace package {
         virtual bool is_base_class() override { return false; }
 
     private:
-        IpfsWrapper& m_ipfs;
+        ipfs::IpfsWrapper& m_ipfs;
     };
 
 

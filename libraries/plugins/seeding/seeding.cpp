@@ -12,9 +12,10 @@
 #include <decent/package/package_config.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <algorithm>
-//#include <ipfs/client.h>
 #include <json.hpp>
 #include <graphene/chain/hardfork.hpp>
+#include <string>
+#include "ipfs_wrapper.hpp"
 
 
 namespace decent { namespace seeding {
@@ -344,10 +345,10 @@ void seeding_plugin_impl::send_ready_to_publish()
    ilog("seeding plugin_impl: send_ready_to_publish() begin");
    const auto &sidx = database().get_index_type<my_seeder_index>().indices().get<by_seeder>();
    auto sritr = sidx.begin();
-//   ipfs::Client ipfs_client(decent::package::PackageManagerConfigurator::instance().get_ipfs_host(), decent::package::PackageManagerConfigurator::instance().get_ipfs_port());
-//   ipfs::Json json;
-//   ipfs_client.Id( &json );
-   nlohmann::json json;
+
+   ipfs::IpfsWrapper& ipfs_instance = ipfs::IpfsWrapper::instance();
+
+   std::string ipfs_peer_id(ipfs_instance.ipfs_id());
 
    while(sritr != sidx.end() ){
       const auto& assets_by_symbol = database().get_index_type<asset_index>().indices().get<by_symbol>();
@@ -368,7 +369,7 @@ void seeding_plugin_impl::send_ready_to_publish()
       op.space = sritr->free_space;
       op.price_per_MByte = dct_price.amount.value;
       op.pubKey = get_public_el_gamal_key(sritr->content_privKey);
-      op.ipfs_ID = json["ID"];
+      op.ipfs_ID = ipfs_peer_id;
       signed_transaction tx;
       tx.operations.push_back(op);
 
