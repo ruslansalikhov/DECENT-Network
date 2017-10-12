@@ -64,6 +64,7 @@ target_include_directories(ipfs-wrapper PUBLIC
 target_link_libraries(ipfs-wrapper PUBLIC
         ipfs-binding
         nlohmann_json
+        graphene_utilities
 )
 
 target_link_libraries(ipfs-wrapper INTERFACE "-fobjc-link-runtime -framework Security")
