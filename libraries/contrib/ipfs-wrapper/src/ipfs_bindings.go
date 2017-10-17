@@ -31,8 +31,10 @@ import (
 	unixfs "github.com/ipfs/go-ipfs/unixfs"
     "github.com/ipfs/go-ipfs/commands/files"
 
-	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
-	node "gx/ipfs/QmPN7cwmpcc4DWXb4KTB9dNAJgjuPY69h3npsMfhRrQL9c/go-ipld-format"
+    //for ipfs v0.4.10 version
+	peer "gx/ipfs/QmdS9KpbDyPrieswibZhkod1oXqRwZJrUPzxCofAMWpFGq/go-libp2p-peer"
+	node "gx/ipfs/Qmb3Hm9QDFmfYuET4pu7Kyg8JV78jFa1nvZx5vnCZsK4ck/go-ipld-format"
+
 )
 
 // #cgo CFLAGS: -DIN_GO=1 -ggdb
@@ -183,19 +185,8 @@ func go_ipfs_cache_resolve(c_ipns_id *C.char, fn unsafe.Pointer, fn_arg unsafe.P
 	}()
 }
 
-// IMPORTANT: The returned value needs to be explicitly `free`d.
-//export go_ipfs_cache_ipns_id
-////
-func go_ipfs_cache_ipns_id() *C.char {
-	pid, err := peer.IDFromPrivateKey(g.node.PrivateKey)
 
-	if err != nil {
-		return nil
-	}
 
-	cstr := C.CString(pid.Pretty())
-	return cstr
-}
 
 func publish(ctx context.Context, duration time.Duration, n *core.IpfsNode, cid string) error {
 	path, err := path.ParseCidToPath(cid)
@@ -233,6 +224,8 @@ func go_ipfs_cache_publish(cid *C.char, seconds C.int64_t, fn unsafe.Pointer, fn
 		C.execute_void_cb(fn, fn_arg)
 	}()
 }
+
+// IMPORTANT: The returned value needs to be explicitly `free`d.
 
 //export go_ipfs_cache_id
 func go_ipfs_cache_id() (*C.char) {
