@@ -600,7 +600,8 @@ void Globals::startDaemons(BlockChainStartType type)
    fc::promise<void>::ptr& exit_promise = m_p_daemon_details->exit_promise;
 
    QProcess* daemon_process = nullptr;
-   daemon_process = run_ipfs_daemon(qApp, qApp->applicationDirPath());
+// NOTE: no need to run ipfs daemon
+//   daemon_process = run_ipfs_daemon(qApp, qApp->applicationDirPath());
    m_p_daemon_details->ipfs_process = daemon_process;
 
    fc::set_signal_handler([this](int /*signal*/) {
