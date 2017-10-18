@@ -1,4 +1,6 @@
 
+add_subdirectory( ipfs )
+
 file( GLOB HEADERS "*.hpp" "include/package/package/*.hpp" )
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -6,19 +8,21 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-3")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3")
 
+
 add_library( package_manager
              package.cpp
              detail.cpp
              #torrent_transfer.cpp
-             ipfs_transfer.cpp
              ${HEADERS} local.cpp local.hpp)
+
+add_dependencies(package_manager ipfs-transfer)
 
 target_link_libraries( package_manager
         fc
         decent_encrypt
         nlohmann_json
         graphene_utilities
-        ipfs-wrapper
+        ipfs-transfer
 )
 
 target_include_directories( package_manager

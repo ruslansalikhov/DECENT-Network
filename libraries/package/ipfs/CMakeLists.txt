@@ -4,9 +4,8 @@ include(ExternalProject)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-3")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3")
-
+# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-3")
+# set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3")
 
 ################################################################################
 # TODO(peterj): Address sanitizer seems to cause segmentation faults on exit
@@ -23,10 +22,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -pthread -Wall -ggdb ${SANITI
 add_custom_command(
         OUTPUT ${BINDING_DIR}/ipfs_bindings.h
                ${BINDING_DIR}/ipfs_bindings.a
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/ipfs_bindings.go
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/ipfs_bindings.go
         COMMAND mkdir -p ${BINDING_DIR}
                 && cd ${BINDING_DIR}
-                && go build --buildmode=c-archive ${CMAKE_CURRENT_SOURCE_DIR}/src/ipfs_bindings.go)
+                && go build --buildmode=c-archive ${CMAKE_CURRENT_SOURCE_DIR}/ipfs_bindings.go)
 
 add_library(ipfs-binding STATIC IMPORTED)
 set_target_properties(ipfs-binding PROPERTIES
@@ -41,11 +40,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -pthread -Wall -fobjc-link-ru
 
 include_directories(
     "${BINDING_DIR}"
-    "${CMAKE_SOURCE_DIR}/include")
+    "${CMAKE_SOURCE_DIR}/include"
+)
 
 set(IPFS_WRAPPER_FILES
-    src/ipfs_wrapper.cpp
-        src/ipfs_wrapper.hpp
+    ipfs_wrapper.cpp
+    ipfs_wrapper.hpp
 )
 
 add_library(ipfs-wrapper STATIC
@@ -59,7 +59,7 @@ target_include_directories(ipfs-wrapper PRIVATE
         ipfs-binding)
 
 target_include_directories(ipfs-wrapper PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/src")
+        "${CMAKE_CURRENT_SOURCE_DIR}")
 
 target_link_libraries(ipfs-wrapper PUBLIC
         ipfs-binding
@@ -68,6 +68,27 @@ target_link_libraries(ipfs-wrapper PUBLIC
 )
 
 target_link_libraries(ipfs-wrapper INTERFACE "-fobjc-link-runtime -framework Security")
+
+################################################################################
+project(ipfs-transfer)
+
+set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -fobjc-link-runtime -framework Security")
+
+include_directories(
+        "${BINDING_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+        "${CMAKE_SOURCE_DIR}/libraries/encrypt/include"
+)
+
+add_library(ipfs-transfer STATIC
+        ipfs_transfer.cpp
+        ipfs_transfer.hpp
+)
+
+add_dependencies(ipfs-transfer ipfs-wrapper)
+
+target_link_libraries(ipfs-transfer ipfs-wrapper)
+
 
 ###############################################################################
 #project(test_client)

@@ -2,14 +2,15 @@
 
 #pragma once
 
-#include "detail.hpp"
+#include "../detail.hpp"
 
 #include <decent/package/package.hpp>
 
-#include <ipfs_wrapper.hpp>
-
 #include <memory>
 
+namespace ipfs {
+    class IpfsWrapper;
+}
 
 namespace decent { namespace package {
 
