@@ -14,6 +14,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 ################################################################################
 
 set(BINDING_DIR "${CMAKE_BINARY_DIR}/ipfs_bindings")
+set(GO_PATH_LOCAL_DIR "${CMAKE_SOURCE_DIR}/libraries/contrib/go")
 
 project(ipfs-binding)
 
@@ -23,7 +24,8 @@ add_custom_command(
         OUTPUT ${BINDING_DIR}/ipfs_bindings.h
                ${BINDING_DIR}/ipfs_bindings.a
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/ipfs_bindings.go
-        COMMAND mkdir -p ${BINDING_DIR}
+        COMMAND export GOPATH=${GO_PATH_LOCAL_DIR}
+                && mkdir -p ${BINDING_DIR}
                 && cd ${BINDING_DIR}
                 && go build --buildmode=c-archive ${CMAKE_CURRENT_SOURCE_DIR}/ipfs_bindings.go)
 
