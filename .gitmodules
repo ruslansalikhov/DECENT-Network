@@ -17,3 +17,6 @@
 [submodule "update"]
 	path = libraries/update
 	url = https://github.com/DECENTfoundation/updatemanager.git
+[submodule "libraries/contrib/go/src/github.com/ipfs/go-ipfs"]
+	path = libraries/contrib/go/src/github.com/ipfs/go-ipfs
+	url = http://github.com/ipfs/go-ipfs.git
