@@ -89,8 +89,10 @@ void seeding_plugin_impl::handle_new_content(const content_submit_operation& cs_
          service_thread->async( [cs_op, this, mso](){
               ilog("seeding plugin:  handle_content_submit() lambda called");
               auto& pm = decent::package::PackageManager::instance();
-              auto package_handle = pm.get_package(cs_op.URI, mso._hash);
-              decent::package::event_listener_handle_t sl = std::make_shared<SeedingListener>(*this, mso , package_handle);
+              fc::url _url( cs_op.URI );
+              bool shall_download = (_url.proto() == "ipfs");
+              auto package_handle = pm.get_package(cs_op.URI, mso._hash, !shall_download);
+              decent::package::event_listener_handle_t sl = std::make_shared<SeedingListener>(*this, mso , package_handle );
               package_handle->remove_all_event_listeners();
               package_handle->add_event_listener(sl);
               package_handle->download(false);
@@ -221,8 +223,10 @@ seeding_plugin_impl::generate_por_int(const my_seeding_object &mso, decent::pack
    ilog("seeding plugin_impl: generate_por() - Creating operation");
    proof_of_custody_operation op;
    decent::encrypt::CustodyProof proof;
+
    auto dyn_props = db.get_dynamic_global_properties();
-   if(mso.cd){
+
+   if(mso.cd && !package_handle->is_virtual ){
       ilog("seeding plugin_impl: generate_por() - calculating full PoR");
       fc::ripemd160 b_id = dyn_props.head_block_id;
       uint32_t b_num = dyn_props.head_block_number;
@@ -236,10 +240,9 @@ seeding_plugin_impl::generate_por_int(const my_seeding_object &mso, decent::pack
          package_handle->download(true);
          package_handle->create_proof_of_custody(*mso.cd, proof);
       }
+      op.proof = proof;
    }
    op.seeder = mso.seeder;
-   if(mso.cd)
-      op.proof = proof;
 
    op.URI = mso.URI;
 
@@ -262,6 +265,7 @@ seeding_plugin_impl::generate_por_int(const my_seeding_object &mso, decent::pack
 }FC_CAPTURE_AND_RETHROW((mso))}
 
 void seeding_plugin_impl::release_package(const my_seeding_object &mso, decent::package::package_handle_t package_handle){
+
    ilog("seeding plugin_impl:  generate_por() - content expired, cleaning up");
    auto& pm = decent::package::PackageManager::instance();
    package_handle->stop_seeding();
@@ -343,54 +347,61 @@ seeding_plugin_impl::generate_pors()
 void seeding_plugin_impl::send_ready_to_publish()
 {
    ilog("seeding plugin_impl: send_ready_to_publish() begin");
-   const auto &sidx = database().get_index_type<my_seeder_index>().indices().get<by_seeder>();
+   try {const auto &sidx = database().get_index_type<my_seeder_index>().indices().get<by_seeder>();
    auto sritr = sidx.begin();
-
    ipfs::IpfsWrapper& ipfs_instance = ipfs::IpfsWrapper::instance();
 
-   std::string ipfs_peer_id(ipfs_instance.ipfs_id());
+   std::string ipfs_peer_id(ipfs_instance.ipfs_id() );
 
-   while(sritr != sidx.end() ){
-      const auto& assets_by_symbol = database().get_index_type<asset_index>().indices().get<by_symbol>();
-      auto itr = assets_by_symbol.find(sritr->symbol);
+      while( sritr != sidx.end()) {
+         const auto &assets_by_symbol = database().get_index_type<asset_index>().indices().get<by_symbol>();
+         auto itr = assets_by_symbol.find(sritr->symbol);
 
-      if(itr == assets_by_symbol.end() || !itr->is_monitored_asset() || itr->monitored_asset_opts->current_feed.core_exchange_rate.is_null() ) {
-         itr = assets_by_symbol.find("DCT");
-      }
+         if( itr == assets_by_symbol.end() || !itr->is_monitored_asset() ||
+             itr->monitored_asset_opts->current_feed.core_exchange_rate.is_null()) {
+            itr = assets_by_symbol.find("DCT");
+         }
 
-      const asset_object& ao = *itr;
+         const asset_object &ao = *itr;
 
-      asset dct_price  = ao.amount_from_string(sritr->price);
-      if ( ao.id != asset_id_type() ) //core asset
-         dct_price = dct_price * ao.monitored_asset_opts->current_feed.core_exchange_rate;
+         asset dct_price = ao.amount_from_string(sritr->price);
+         if( ao.id != asset_id_type()) //core asset
+            dct_price = dct_price * ao.monitored_asset_opts->current_feed.core_exchange_rate;
 
-      ready_to_publish_operation op;
-      op.seeder = sritr->seeder;
-      op.space = sritr->free_space;
-      op.price_per_MByte = dct_price.amount.value;
-      op.pubKey = get_public_el_gamal_key(sritr->content_privKey);
-      op.ipfs_ID = ipfs_peer_id;
-      signed_transaction tx;
-      tx.operations.push_back(op);
 
-      idump((op));
+         ready_to_publish_operation op;
+         op.seeder = sritr->seeder;
+         op.space = sritr->free_space;
+         op.price_per_MByte = dct_price.amount.value;
+         op.pubKey = get_public_el_gamal_key(sritr->content_privKey);
+         op.ipfs_ID = ipfs_peer_id;
+signed_transaction tx;
+         tx.operations.push_back(op);
+
+         idump((op));
+
+
 
       auto dyn_props = database().get_dynamic_global_properties();
       tx.set_reference_block(dyn_props.head_block_id);
       tx.set_expiration(dyn_props.time + fc::seconds(30));
 
-      chain_id_type _chain_id = database().get_chain_id();
+         chain_id_type _chain_id = database().get_chain_id();
 
-      tx.sign(sritr->privKey, _chain_id);
-      idump((tx));
-      tx.validate();
-      main_thread->async( [this, tx](){ilog("seeding plugin_impl:  send_ready_to_publish lambda - pushing transaction"); database().push_transaction(tx);} );
-      ilog("seeding plugin_impl: send_ready_to_publish() broadcasting");
-      _self.p2p_node().broadcast_transaction(tx);
-      //fc::usleep(fc::microseconds(1000000));
-      sritr++;
-   }
-   fc::time_point next_wakeup(fc::time_point::now() + fc::microseconds( (uint64_t) 1000000 * (15 * 60))); //let's send PoR every hour
+         tx.sign(sritr->privKey, _chain_id);
+         idump((tx));
+         tx.validate();
+         main_thread->async([ this, tx ]() {
+              ilog("seeding plugin_impl:  send_ready_to_publish lambda - pushing transaction");
+              database().push_transaction(tx);
+         });
+         ilog("seeding plugin_impl: send_ready_to_publish() broadcasting");
+         _self.p2p_node().broadcast_transaction(tx);
+         //fc::usleep(fc::microseconds(1000000));
+         sritr++;
+      }
+   }catch(...){};
+   fc::time_point next_wakeup(fc::time_point::now() + fc::microseconds( (uint64_t) 1000000 * (DECENT_RTP_VALIDITY / 2 ))); //let's send PoR every hour
    ilog("seeding plugin_impl: planning next send_ready_to_publish at ${t}",("t",next_wakeup ));
    service_thread->schedule([=](){ send_ready_to_publish();}, next_wakeup, "Seeding plugin RtP generate" );
    ilog("seeding plugin_impl: send_ready_to_publish() end");

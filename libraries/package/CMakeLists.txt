@@ -1,7 +1,7 @@
 
 add_subdirectory( ipfs )
 
-file( GLOB HEADERS "*.hpp" "include/package/package/*.hpp" )
+file( GLOB HEADERS "*.hpp" "include/decent/package/*.hpp" )
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 

@@ -747,7 +747,7 @@ void_result set_publishing_right_evaluator::do_evaluate( const set_publishing_ri
               so.free_space = o.space;
               so.pubKey = o.pubKey;
               so.price = asset(o.price_per_MByte);
-              so.expiration = db().head_block_time() + 24 * 3600;
+              so.expiration = db().head_block_time() + DECENT_RTP_VALIDITY;
               so.ipfs_ID = o.ipfs_ID;
               so.stats = stats;
          });
@@ -783,7 +783,7 @@ void_result set_publishing_right_evaluator::do_evaluate( const set_publishing_ri
               so.free_space = o.space;
               so.pubKey = o.pubKey;
               so.price = asset(o.price_per_MByte);
-              so.expiration = db().head_block_time() + 24 * 3600;
+              so.expiration = db().head_block_time() + DECENT_RTP_VALIDITY;
               so.ipfs_ID = o.ipfs_ID;
               so.stats = stats;
               if( o.region_code.valid() )
@@ -817,7 +817,7 @@ void_result set_publishing_right_evaluator::do_evaluate( const set_publishing_ri
       FC_ASSERT( content != idx.end(), "content not found" );
       FC_ASSERT( content->expiration > db().head_block_time(), "content expired" );
       //verify that the seed is not too old...
-      if (o.proof.valid())
+      if (o.proof.valid() )
       {
          auto& proof = *o.proof;
 

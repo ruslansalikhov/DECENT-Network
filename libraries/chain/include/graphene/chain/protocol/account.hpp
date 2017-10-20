@@ -146,7 +146,7 @@ namespace graphene { namespace chain {
       extension< ext > extensions;
 
       account_id_type fee_payer()const { return account; }
-      void       validate()const;
+      void      validate()const;
       share_type calculate_fee( const fee_parameters_type& k )const;
 
       bool is_owner_update()const
