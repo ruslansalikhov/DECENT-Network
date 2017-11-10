@@ -225,8 +225,12 @@ namespace detail {
             auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
             auto login = std::make_shared<graphene::app::login_api>( std::ref(*_self) );
             auto db_api = std::make_shared<graphene::app::database_api>( std::ref(*_self->chain_database()) );
+            auto broadcast_api = std::make_shared<graphene::app::network_broadcast_api>( std::ref(*_self));
+            auto history_api = std::make_shared< graphene::app::history_api >( std::ref(*_self));
             wsc->register_api(fc::api<graphene::app::database_api>(db_api));
             wsc->register_api(fc::api<graphene::app::login_api>(login));
+            wsc->register_api(fc::api<graphene::app::network_broadcast_api>(broadcast_api));
+            wsc->register_api(fc::api<graphene::app::history_api>(history_api));
             c->set_session_data( wsc );
          });
          ilog("Configured websocket rpc to listen on ${ip}", ("ip",_options->at("rpc-endpoint").as<string>()));
@@ -252,9 +256,13 @@ namespace detail {
          _websocket_tls_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
             auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
             auto login = std::make_shared<graphene::app::login_api>( std::ref(*_self) );
+            auto broadcast_api = std::make_shared<graphene::app::network_broadcast_api>( std::ref(*_self));
+            auto history_api = std::make_shared< graphene::app::history_api >( std::ref(*_self));
             auto db_api = std::make_shared<graphene::app::database_api>( std::ref(*_self->chain_database()) );
             wsc->register_api(fc::api<graphene::app::database_api>(db_api));
             wsc->register_api(fc::api<graphene::app::login_api>(login));
+            wsc->register_api(fc::api<graphene::app::network_broadcast_api>(broadcast_api));
+            wsc->register_api(fc::api<graphene::app::history_api>(history_api));
             c->set_session_data( wsc );
          });
          ilog("Configured websocket TLS rpc to listen on ${ip}", ("ip",_options->at("rpc-tls-endpoint").as<string>()));
