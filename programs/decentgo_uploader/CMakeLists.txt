@@ -7,6 +7,7 @@ find_package( Qt5Widgets REQUIRED )
 find_package( Qt5Svg REQUIRED )
 
 find_package( FFmpeg REQUIRED)
+find_package( FreeImage REQUIRED)
 
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 
@@ -45,6 +46,7 @@ target_include_directories(decentgo_uploader PRIVATE
         graphene_wallet
         graphene_app
         ${FFMPEG_INCLUDE_DIR}
+        ${FREEIMAGE_INCLUDE_DIRS}
         )
 
 target_link_libraries(decentgo_uploader PUBLIC
@@ -54,6 +56,7 @@ target_link_libraries(decentgo_uploader PUBLIC
           graphene_app
           graphene_chain
           ${FFMPEG_LIBRARIES}
+          ${FREEIMAGE_LIBRARIES}
 
 #          graphene_app
 #          graphene_net
