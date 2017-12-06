@@ -2876,9 +2876,9 @@ signed_transaction content_cancellation(string author,
       return result;
    }
 
-   void generate_thumbnails_from_video(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& out_folder)
+   int generate_thumbnails_from_video(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& out_folder)
    {
-      generate_thumbnails(filename, size_width, size_height, time_interval, number_of_images, out_folder);
+      return generate_thumbnails(filename, size_width, size_height, time_interval, number_of_images, out_folder);
    }
 
    void dbg_make_mia(string creator, string symbol)
@@ -4900,7 +4900,7 @@ void graphene::wallet::detail::submit_transfer_listener::package_seed_complete()
       return my->analyze_video_file(filename);
    }
 
-   void wallet_api::generate_thumbnails_from_video(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& out_folder)
+   int wallet_api::generate_thumbnails_from_video(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& out_folder)
    {
       return my->generate_thumbnails_from_video(filename, size_width, size_height, time_interval, number_of_images, out_folder);
    }

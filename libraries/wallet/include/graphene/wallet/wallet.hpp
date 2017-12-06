@@ -2055,8 +2055,9 @@ namespace graphene { namespace wallet {
           * @param time_interval time interval in wich generate thumbnails, or zero
           * @param number_of_images number of images to generate, or zero
           * @param out_folder output folder for generated thumbnails
+          * @return number of generated thumbnails, or negative on error
           */
-         void generate_thumbnails_from_video(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& out_folder);
+         int generate_thumbnails_from_video(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& out_folder);
 
 
       };

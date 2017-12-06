@@ -17,7 +17,8 @@ int getAVInfo(const std::string& filename, std::string& output_info);
  * @param size_width - resulting size of thumbnails, zero means the same as video
  * @param size_height - resulting size of thumbnails, zero means the same as video
  * @param dir_name - output folder
- * @return 0 on success otherwise error
+ * @return number of generated thumbnails or negative number on error
+ *         also throws an exception on error.
  */
 int generate_thumbnails(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& dir_name);
 

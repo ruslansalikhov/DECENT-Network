@@ -210,8 +210,8 @@ static int ffmpeg_decode_packet(AVCodecContext *avctx, AVFrame *frame, int *got_
 
 int initialize_scale_context(AVCodecContext* pCodecCtx, struct SwsContext** sws_ctx, int width, int height)
 {
-   if (width == 0 || height == 0) {
-      width = pCodecCtx->width;
+   if (width >= 0 || height >= 0) {
+      width  = pCodecCtx->width;
       height = pCodecCtx->height;
    }
 
@@ -313,115 +313,147 @@ int generate_thumbnails(const std::string& filename, int size_width, int size_he
 
    AVFormatContext *pFormatCtx = NULL;
    int             i, videoStream, ret;
-
-   /* register codecs and formats and other lavf/lavc components*/
-   av_register_all();
-
-   // Open video file
-   if (avformat_open_input(&pFormatCtx, filename.c_str(), NULL, NULL) != 0)
-      return -1; // Couldn't open file
-
-   // Retrieve stream information
-   if (avformat_find_stream_info(pFormatCtx, NULL) < 0)
-      return -1; // Couldn't find stream information
-
-   int64_t durration = get_duration_in_sec(pFormatCtx);
-   int64_t myTimeInterval = 0;
-
-   if (time_interval == 0 && number_of_images > 0) {
-      myTimeInterval = durration / number_of_images;
-   }
-   else if (number_of_images == 0 && time_interval > 0) {
-      myTimeInterval = time_interval;
-   }
-
-   int streamIndex = find_video_stream(pFormatCtx);
-   if(streamIndex == -1)
-      return -1;
-
-   AVCodec *pCodec = NULL;
-
-   // Find the decoder for the video stream
-   AVStream* st = pFormatCtx->streams[streamIndex];
-   pCodec = avcodec_find_decoder(st->codecpar->codec_id);
-   if (pCodec == NULL) {
-      return -1; // Codec not found
-   }
-
    AVCodecContext* pCodecCtx = NULL;
-
-   // Copy context
-   pCodecCtx = avcodec_alloc_context3(pCodec);
-   if (avcodec_parameters_to_context(pCodecCtx, st->codecpar) !=0) {
-      fprintf(stderr, "Couldn't copy codec context");
-      return -1; // Error copying codec context
-   }
-
-   AVDictionary* options = NULL;
-
-   // Open codec
-   if (avcodec_open2(pCodecCtx, pCodec, &options) < 0)
-      return -1; // Could not open codec
-
    struct SwsContext *sws_ctx = NULL;
-   if (initialize_scale_context(pCodecCtx, &sws_ctx, size_width, size_height) < 0) {
-      return -1;
-   }
+   AVFrame* frame = NULL;
+   std::string error_text;
+   int frame_index = 0;
 
-   AVFrame* frame = av_frame_alloc();
-   if(!frame)
-      return -1;
+   do //exception emulation
+   {
+      /* register codecs and formats and other lavf/lavc components*/
+      av_register_all();
 
-   AVPacket data_packet;
-   av_init_packet(&data_packet);
-   data_packet.data = NULL;
-   data_packet.size = 0;
-
-   int64_t next_time_interval = 0;
-
-   int got_packet, frame_index = 0;
-   while ((ret = av_read_frame(pFormatCtx, &data_packet)) >= 0) {
-
-      if (data_packet.stream_index != streamIndex)
-         continue;
-
-      //frame time in AV_TIME_BASE units
-      int64_t cur_frame_time = av_rescale_q(data_packet.pts, st->time_base, AV_TIME_BASE_Q);
-
-      ret = ffmpeg_decode_packet(pCodecCtx, frame, &got_packet, &data_packet);
-
-      if (got_packet && cur_frame_time >= (next_time_interval * (int64_t)AV_TIME_BASE)) {
-
-         char buffer[64];
-         sprintf(buffer, "thumbnail_%04d.jpg", frame_index);
-
-         std::string out_filename = dir_name + std::string(buffer);
-         ret = save_frame_as_jpeg(pCodecCtx, frame, sws_ctx, size_width, size_height, out_filename.c_str());
-
-         frame_index++;
-         next_time_interval += myTimeInterval;
+      // Open video file
+      if (avformat_open_input(&pFormatCtx, filename.c_str(), NULL, NULL) != 0) {
+         error_text = "avformat_open_input - Couldn't open file";
+         break;
       }
+
+      // Retrieve stream information
+      if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
+         error_text = "avformat_find_stream_info - Couldn't find stream information";
+         break;
+      }
+
+      int64_t durration = get_duration_in_sec(pFormatCtx);
+      if (durration == 0) {
+         error_text = "get_duration_in_sec - duration too short";
+         break;
+      }
+
+      int64_t myTimeInterval = 0;
+
+      if (time_interval == 0 && number_of_images > 0) {
+         myTimeInterval = durration / number_of_images;
+      }
+      else if (number_of_images == 0 && time_interval > 0) {
+         myTimeInterval = time_interval;
+      }
+
+      int streamIndex = find_video_stream(pFormatCtx);
+      if(streamIndex == -1) {
+         error_text = "find_video_stream - video stream not found";
+         break;
+      }
+
+      AVCodec *pCodec = NULL;
+
+      // Find the decoder for the video stream
+      AVStream* st = pFormatCtx->streams[streamIndex];
+      pCodec = avcodec_find_decoder(st->codecpar->codec_id);
+      if (pCodec == NULL) {
+         error_text = "avcodec_find_decoder - Codec not found";
+         break;
+      }
+
+      // Copy context
+      pCodecCtx = avcodec_alloc_context3(pCodec);
+      if (avcodec_parameters_to_context(pCodecCtx, st->codecpar) !=0) {
+         error_text = "avcodec_parameters - Couldn't copy codec context";
+         break;
+      }
+
+      AVDictionary* options = NULL;
+
+      // Open codec
+      if (avcodec_open2(pCodecCtx, pCodec, &options) < 0) {
+         error_text = "avcodec_open - Could not open codec";
+         break;
+      }
+
+      if (initialize_scale_context(pCodecCtx, &sws_ctx, size_width, size_height) < 0) {
+         error_text = "initialize_scale_context failed!";
+         break;
+      }
+
+      frame = av_frame_alloc();
+      if(!frame) {
+         error_text = "av_frame_alloc failed!";
+         break;
+      }
+
+      AVPacket data_packet;
+      av_init_packet(&data_packet);
+      data_packet.data = NULL;
+      data_packet.size = 0;
+
+      int64_t next_time_interval = 0;
+
+      int got_packet;
+      while ((ret = av_read_frame(pFormatCtx, &data_packet)) >= 0) {
+
+         if (data_packet.stream_index != streamIndex)
+            continue;
+
+         //frame time in AV_TIME_BASE units
+         int64_t cur_frame_time = av_rescale_q(data_packet.pts, st->time_base, AV_TIME_BASE_Q);
+
+         ret = ffmpeg_decode_packet(pCodecCtx, frame, &got_packet, &data_packet);
+
+         if (got_packet && cur_frame_time >= (next_time_interval * (int64_t)AV_TIME_BASE)) {
+
+            char buffer[64];
+            sprintf(buffer, "thumbnail_%04d.jpg", frame_index);
+
+            std::string out_filename = dir_name + std::string(buffer);
+            ret = save_frame_as_jpeg(pCodecCtx, frame, sws_ctx, size_width, size_height, out_filename.c_str());
+
+            frame_index++;
+            next_time_interval += myTimeInterval;
+         }
+      }
+
+      if (ret < 0 && ret != AVERROR_EOF) {
+         char buffer[512];
+         av_make_error_string(buffer, sizeof(buffer), ret);
+
+         error_text = std::string("av_read_frame error: ") + buffer;
+      }
+
+      av_packet_unref(&data_packet);
+
+   } while(false);
+
+   if (frame)
+      av_frame_free(&frame);
+
+   if (sws_ctx)
+      finalize_scale_context(&sws_ctx);
+
+   if (pCodecCtx)
+      avcodec_close(pCodecCtx);
+
+   if (pFormatCtx) {
+      // Close the video file & free context
+      avformat_close_input(&pFormatCtx);
    }
 
-   if (ret < 0) {
-      char buffer[512];
-      av_make_error_string(buffer, sizeof(buffer), ret);
-
+   if(!error_text.empty()) {
+      throw std::runtime_error(error_text);
    }
 
-
-   av_packet_unref(&data_packet);
-
-   av_frame_free(&frame);
-
-   finalize_scale_context(&sws_ctx);
-
-   avcodec_close(pCodecCtx);
-
-   // Close the video file & free context
-   avformat_close_input(&pFormatCtx);
-
-   return 0;
+   return frame_index;
 }
 
 
