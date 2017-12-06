@@ -1,5 +1,5 @@
 
-#include "video_info.h"
+#include <decent/video/video_info.hpp>
 
 extern "C" {
 #include <libavformat/avformat.h>

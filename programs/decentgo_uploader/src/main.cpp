@@ -2,7 +2,8 @@
 #include <QApplication>
 #include <FreeImage.h>
 #include "wallet_wrapper.h"
-#include "video_info.h"
+
+//#include <decent/video/video_info.hpp>
 
 
 int main(int argc, char *argv[])
@@ -16,7 +17,7 @@ int main(int argc, char *argv[])
    std::string filename = "/Users/milanfranc/Downloads/SampleVideo_360x240_30mb.mp4";
    std::string out_dir = "/Users/milanfranc/test_thumbnails/";
 
-   int ret = generate_thumbnails(filename, 1600, 1600, 4, 0, out_dir);
+//   int ret = generate_thumbnails(filename, 1600, 1600, 4, 0, out_dir);
 
 
 
@@ -32,7 +33,7 @@ int main(int argc, char *argv[])
 
    std::string output;
 
-   getAVInfo("/Users/milanfranc/Downloads/SampleVideo_360x240_1mb.mp4", output);
+//   getAVInfo("/Users/milanfranc/Downloads/SampleVideo_360x240_1mb.mp4", output);
 
 
 //   VideoInfo test2;

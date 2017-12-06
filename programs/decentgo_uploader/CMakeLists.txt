@@ -32,8 +32,6 @@ set(DECENTGO_UPLOADER_FILES
         src/mainwindow.ui
         src/wallet_wrapper.cpp
         src/wallet_wrapper.h
-        src/video_info.cpp
-        src/video_info.h
 )
 
 add_executable(decentgo_uploader MACOSX_BUNDLE

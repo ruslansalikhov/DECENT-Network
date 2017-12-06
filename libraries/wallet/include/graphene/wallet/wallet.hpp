@@ -1109,7 +1109,7 @@ namespace graphene { namespace wallet {
          /**
           * @brief Converts asset into DCT, using actual price feed.
           * @param amount the amount to convert in nominal units
-          * @param asset_symbol the symbol or id of the asset to convert
+          * @param asset_symbol_or_id the symbol or id of the asset to convert
           * @return price in DCT
           */
          string price_to_dct(const string& amount, const string& asset_symbol_or_id);
@@ -2017,8 +2017,8 @@ namespace graphene { namespace wallet {
 
          /**
          * @brief Receives message objects by sender and/or receiver
-         * @param reveiver Name of message sender. If you dont want to filter by sender then let it empty.
-         * @param reveiver Name of message receiver. If you dont want to filter by receiver then let it empty.
+         * @param sender Name of message sender. If you dont want to filter by sender then let it empty.
+         * @param receiver Name of message receiver. If you dont want to filter by receiver then let it empty.
          * @param max_count Maximal number of last messages to be displayed
          * @return vector of message objects
          */
@@ -2026,7 +2026,7 @@ namespace graphene { namespace wallet {
 
          /**
          * @brief Receives messages by receiver
-         * @param reveiver Name of message receiver which must be imported to caller's wallet
+         * @param receiver Name of message receiver which must be imported to caller's wallet
          * @param max_count Maximal number of last messages to be displayed
          * @return vector of message objects
          */
@@ -2039,6 +2039,26 @@ namespace graphene { namespace wallet {
          * @return vector of message objects
          */
          vector<text_message> get_sent_messages(const std::string& sender, uint32_t max_count) const;
+
+         /**
+          * @brief analyzes video file and returns info about it in json form
+          * @param filename Filename of the file to analyze
+          * @return informations about the file or empty string when error.
+          */
+         std::string analyze_video_file(const std::string& filename);
+
+         /**
+          * generates thumbnails from given video file into a folder
+          * @param filename Filename of the video
+          * @param size_width output size(width) of the thumbnail, if zero size is taken from video
+          * @param size_height output size(width) of the thumbnail, if zero size is taken from video
+          * @param time_interval time interval in wich generate thumbnails, or zero
+          * @param number_of_images number of images to generate, or zero
+          * @param out_folder output folder for generated thumbnails
+          */
+         void generate_thumbnails_from_video(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& out_folder);
+
+
       };
 
    } }
@@ -2253,4 +2273,6 @@ FC_API( graphene::wallet::wallet_api,
            (get_message_objects)
            (get_messages)
            (get_sent_messages)
+           (analyze_video_file)
+           (generate_thumbnails_from_video)
 )
