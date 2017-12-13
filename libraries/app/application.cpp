@@ -47,6 +47,7 @@
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/network/resolve.hpp>
 
+
 #include <boost/filesystem/path.hpp>
 #include <boost/signals2.hpp>
 #include <boost/range/algorithm/reverse.hpp>
@@ -56,6 +57,7 @@
 #include <fc/log/file_appender.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/log/logger_config.hpp>
+
 
 #include <boost/range/adaptor/reversed.hpp>
 #include <decent/package/package_config.hpp>
@@ -222,12 +224,15 @@ namespace detail {
          _websocket_server = std::make_shared<fc::http::websocket_server>(enable_deflate_compression);
 
          _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
+            
             auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
+            c->www_root = _www_root.string();
             auto login = std::make_shared<graphene::app::login_api>( std::ref(*_self) );
             auto db_api = std::make_shared<graphene::app::database_api>( std::ref(*_self->chain_database()) );
             wsc->register_api(fc::api<graphene::app::database_api>(db_api));
             wsc->register_api(fc::api<graphene::app::login_api>(login));
             c->set_session_data( wsc );
+
          });
          ilog("Configured websocket rpc to listen on ${ip}", ("ip",_options->at("rpc-endpoint").as<string>()));
          _websocket_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-endpoint").as<string>()) );
@@ -449,7 +454,7 @@ namespace detail {
             wild_access.allowed_apis.push_back( "messaging_api" );
             _apiaccess.permission_map["*"] = wild_access;
          }
-
+         
          reset_p2p_node(_data_dir);
          reset_websocket_server();
          reset_websocket_tls_server();
@@ -907,6 +912,7 @@ namespace detail {
       application* _self;
 
       fc::path _data_dir;
+      fc::path _www_root;
       const bpo::variables_map* _options = nullptr;
       api_access _apiaccess;
 
@@ -975,9 +981,10 @@ void application::set_program_options(boost::program_options::options_descriptio
    configuration_file_options.add(_cfg_options);
 }
 
-void application::initialize(const fc::path& data_dir, const boost::program_options::variables_map& options)
+void application::initialize(const fc::path& data_dir, const boost::program_options::variables_map& options, const fc::path& www_root)
 {
    my->_data_dir = data_dir;
+   my->_www_root = www_root;
    my->_options = &options;
 
    if( options.count("create-genesis-json") )

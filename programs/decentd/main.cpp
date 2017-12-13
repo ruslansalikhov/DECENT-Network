@@ -213,7 +213,8 @@ int main(int argc, char** argv) {
       }
 
       bpo::notify(options);
-      node->initialize(data_dir, options);
+      fc::path temp_dir =  utilities::decent_path_finder::instance().get_decent_temp();
+      node->initialize(data_dir, options, temp_dir);
       node->initialize_plugins( options );
 
       node->startup();
