@@ -9,7 +9,7 @@
  * @param output_info - output informations in json string
  * @return 0 on success otherwise error
  */
-int getAVInfo(const std::string& filename, std::string& output_info);
+int ffmpeg_getAVInfo(const std::string& filename, std::string& output_info);
 
 /**
  * generates thumbnails from video into given folder
@@ -20,7 +20,11 @@ int getAVInfo(const std::string& filename, std::string& output_info);
  * @return number of generated thumbnails or negative number on error
  *         also throws an exception on error.
  */
-int generate_thumbnails(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& dir_name);
+int ffmpeg_generate_thumbnails(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& dir_name);
+
+
+//TBD
+int ffmpeg_recode_video(const std::string& filename, const std::string& out_filename);
 
 
 #endif //DECENT_VIDEO_INFO_H

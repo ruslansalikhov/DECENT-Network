@@ -13,6 +13,7 @@ extern "C" {
 
 #include <FreeImage.h>
 #include <cstdlib>
+#include <fc/filesystem.hpp>
 
 #include "json.hpp"
 
@@ -52,7 +53,7 @@ static std::string get_duration(AVFormatContext* ic)
    return std::string("N/A");
 }
 
-int getAVInfo(const std::string& filename, std::string& output_info)
+int ffmpeg_getAVInfo(const std::string& filename, std::string& output_info)
 {
    AVFormatContext *pFormatCtx = NULL;
    int             i, videoStream, ret;
@@ -208,7 +209,7 @@ static int ffmpeg_decode_packet(AVCodecContext *avctx, AVFrame *frame, int *got_
    return 0;
 }
 
-int initialize_scale_context(AVCodecContext* pCodecCtx, struct SwsContext** sws_ctx, int width, int height)
+static int initialize_scale_context(AVCodecContext* pCodecCtx, struct SwsContext** sws_ctx, int width, int height)
 {
    if (width >= 0 || height >= 0) {
       width  = pCodecCtx->width;
@@ -233,7 +234,7 @@ int initialize_scale_context(AVCodecContext* pCodecCtx, struct SwsContext** sws_
    return 0;
 }
 
-void finalize_scale_context(struct SwsContext** sws_ctx)
+static void finalize_scale_context(struct SwsContext** sws_ctx)
 {
    sws_freeContext(*sws_ctx);
    sws_ctx = NULL;
@@ -304,11 +305,15 @@ int get_frame_image_for_time(AVFormatContext *pFormatCtx, int streamIndex, int64
    return av_seek_frame(pFormatCtx, streamIndex, seek_target, AVSEEK_FLAG_ANY);
 }
 
-int generate_thumbnails(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& dir_name)
+int ffmpeg_generate_thumbnails(const std::string& filename, int size_width, int size_height, int time_interval, int number_of_images, const std::string& dir_name)
 {
    if ((time_interval == 0 && number_of_images == 0) ||
        (time_interval > 0 && number_of_images > 0)) {
       return -1;
+   }
+
+   if (!fc::exists(fc::path(dir_name))) {
+      throw std::runtime_error("output directory doesn't exist");
    }
 
    AVFormatContext *pFormatCtx = NULL;
@@ -454,6 +459,12 @@ int generate_thumbnails(const std::string& filename, int size_width, int size_he
    }
 
    return frame_index;
+}
+
+int ffmpeg_recode_video(const std::string& filename, const std::string& out_filename)
+{
+
+   return -1;
 }
 
 
