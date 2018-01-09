@@ -3,6 +3,26 @@
 
 #include <map>
 
+
+bool script_cli::check_function(const std::string& fn_name)
+{
+   if (std::find(_func_names.begin(), _func_names.end(), fn_name) != _func_names.end() )
+      return true;
+
+   return false;
+}
+
+///////////////////////////////////////////////////////////
+
+static std::string scr_fn_print(const std::vector<std::string>& args)
+{
+   cout << args.at(0) << endl;
+
+   return std::string();
+}
+
+///////////////////////////////////////////////////////////
+
 DcScriptEngine::DcScriptEngine()
 {
 
@@ -13,6 +33,11 @@ void DcScriptEngine::open(const std::string& filename)
    m_cmd_file.open(filename.c_str(), std::ios::in);
 
 
+}
+
+void DcScriptEngine::set_wallet_api(std::shared_ptr<script_cli> script_cli)
+{
+   m_script_cli = script_cli;
 }
 
 int DcScriptEngine::ignore_whitespace()
@@ -174,6 +199,7 @@ int DcScriptEngine::parse_token_to_bracket(std::vector<TokenPair>& out_tokens)
 int DcScriptEngine::parse_line(const std::string& line, std::vector<TokenPair>& result)
 {
    if (line.at(0) == '#') {   //ignore this line
+      result.clear();
       return 0;
    }
 
@@ -310,9 +336,21 @@ std::string test_func(const std::vector<std::string>& params) {
 
 int DcScriptEngine::execute_line(const std::string& fn_name, const std::vector<std::string>& params, std::string& result)
 {
+   if (m_script_cli->check_function(fn_name)) {
+      m_script_cli->execute(fn_name, params, result);
+   }
+   else {
+      //TODO: some other functions...
+
+      if (fn_name == "printf") {
+         result = scr_fn_print(params);
+      }
+   }
+
+
    //serach for function
 
-
+#if 0
    //call function with params..
    result = test_func(params);
 
@@ -333,8 +371,8 @@ int DcScriptEngine::execute_line(const std::string& fn_name, const std::vector<s
          "    'nanotime': '19993363098581330'\n"
          "}    ";
 
-
    result = std::string(test_string);
+#endif
 
    return 0;
 }
@@ -358,6 +396,8 @@ int DcScriptEngine::interpret()
          continue;
 
       ret = parse_line(line, tokens);
+      if (tokens.empty())
+         continue;
 
       ret = convert_variables(tokens, variables);
 
@@ -396,12 +436,8 @@ std::string DcScriptEngine::decode_param(const std::string& param)
 ///////////////////////////////////////////////////////////////////
 
 
-int interpret_commands(const std::string& filename)
+int interpret_commands(const std::string& filename, std::shared_ptr<script_cli> client)
 {
-   DcScriptEngine engine;
-
-   engine.open(filename);
-   engine.interpret();
 
    return 0;
 }

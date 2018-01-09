@@ -34,6 +34,9 @@ using namespace graphene::utilities;
 using namespace graphene::wallet;
 namespace bpo = boost::program_options;
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char *argv[])
 {
    fc::path decent_home;
@@ -187,26 +190,16 @@ int main(int argc, char *argv[])
 
       fc::api<wallet_api> wapi(wapiptr);
 
-      auto wallet_cli = std::make_shared<fc::rpc::cli>();
+      auto wallet_cli = std::make_shared<script_cli>();
       for( auto& name_formatter : wapiptr->get_result_formatters() )
          wallet_cli->format_result( name_formatter.first, name_formatter.second );
 
-      boost::signals2::scoped_connection closed_connection(con->closed.connect([=]{
-          std::cerr << "Server has disconnected us.\n";
-          wallet_cli->stop();
-      }));
-      (void)(closed_connection);
+//      boost::signals2::scoped_connection closed_connection(con->closed.connect([=]{
+//          std::cerr << "Server has disconnected us.\n";
+//          wallet_cli->stop();
+//      }));
+//      (void)(closed_connection);
 
-      if( wapiptr->is_new() )
-      {
-         std::cout << "Please use the set_password method to initialize a new wallet before continuing\n";
-         wallet_cli->set_prompt( "new >>> " );
-      } else
-         wallet_cli->set_prompt( "locked >>> " );
-
-      boost::signals2::scoped_connection locked_connection(wapiptr->lock_changed.connect([&](bool locked) {
-          wallet_cli->set_prompt(  locked ? "locked >>> " : "unlocked >>> " );
-      }));
 
       auto _websocket_server = std::make_shared<fc::http::websocket_server>();
       if( options.count("rpc-endpoint") )
@@ -259,18 +252,22 @@ int main(int argc, char *argv[])
       }
 
 
+      wallet_cli->register_api( wapi );
+      wallet_cli->Initialize();
+
+
       std::string filename = "/Users/milanfranc/work/interpret/new_cmds.txt";
-      interpret_commands(filename);
 
+      DcScriptEngine engine;
 
+      engine.open(filename);
+      engine.set_wallet_api(wallet_cli);
 
-
+      engine.interpret();
 
 
       wapi->save_wallet_file(wallet_file.generic_string());
 
-      locked_connection.disconnect();
-      closed_connection.disconnect();
    }
    catch ( const fc::exception& e )
    {
