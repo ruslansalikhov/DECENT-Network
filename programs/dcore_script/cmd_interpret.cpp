@@ -1,5 +1,6 @@
 
 #include "cmd_interpret.h"
+#include "script_func.h"
 
 #include <map>
 
@@ -12,14 +13,6 @@ bool script_cli::check_function(const std::string& fn_name)
    return false;
 }
 
-///////////////////////////////////////////////////////////
-
-static std::string scr_fn_print(const std::vector<std::string>& args)
-{
-   cout << args.at(0) << endl;
-
-   return std::string();
-}
 
 ///////////////////////////////////////////////////////////
 
@@ -38,6 +31,11 @@ void DcScriptEngine::open(const std::string& filename)
 void DcScriptEngine::set_wallet_api(std::shared_ptr<script_cli> script_cli)
 {
    m_script_cli = script_cli;
+}
+
+void DcScriptEngine::set_internal_funcs(std::shared_ptr<script_int_func> inter_funcs)
+{
+   m_int_funcs = inter_funcs;
 }
 
 int DcScriptEngine::ignore_whitespace()
@@ -339,40 +337,10 @@ int DcScriptEngine::execute_line(const std::string& fn_name, const std::vector<s
    if (m_script_cli->check_function(fn_name)) {
       m_script_cli->execute(fn_name, params, result);
    }
-   else {
-      //TODO: some other functions...
+   else if (m_int_funcs->check_function(fn_name)) {
+      m_int_funcs->execute(fn_name, params, result);
 
-      if (fn_name == "printf") {
-         result = scr_fn_print(params);
-      }
    }
-
-
-   //serach for function
-
-#if 0
-   //call function with params..
-   result = test_func(params);
-
-   const char* test_string = "{\n"
-         "    'user': {\n"
-         "        'name': 'abc',\n"
-         "        'fx': {\n"
-         "            'message': {\n"
-         "                'color': 'red'\n"
-         "            },\n"
-         "            'user': {\n"
-         "                'color': 'blue'\n"
-         "            }\n"
-         "        }\n"
-         "    },\n"
-         "    'timestamp': '2013-10-04T08: 10: 41+0100',\n"
-         "    'message': 'I'mABC..',\n"
-         "    'nanotime': '19993363098581330'\n"
-         "}    ";
-
-   result = std::string(test_string);
-#endif
 
    return 0;
 }

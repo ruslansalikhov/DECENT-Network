@@ -8,6 +8,10 @@ set(DCORE_SCRIPT_FILES
         main.cpp
         cmd_interpret.cpp
         cmd_interpret.h
+        script_func.cpp
+        script_func.h
+        json_path.cpp
+        json_path.h
 )
 
 add_executable(dcore_script MACOSX_BUNDLE

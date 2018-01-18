@@ -41,6 +41,7 @@ namespace decent {
 };
 
 class script_cli;
+class script_int_func;
 
 class DcScriptEngine
 {
@@ -49,7 +50,7 @@ public:
 
    void open(const std::string& filename);
    void set_wallet_api(std::shared_ptr<script_cli> script_cli);
-
+   void set_internal_funcs(std::shared_ptr<script_int_func> inter_funcs);
 
    int interpret();
 
@@ -99,6 +100,7 @@ private:
    std::stringstream m_line_stream;
 
    std::shared_ptr<script_cli> m_script_cli;
+   std::shared_ptr<script_int_func> m_int_funcs;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////
