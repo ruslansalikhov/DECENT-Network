@@ -4,21 +4,25 @@
 
 #include "json_path.h"
 
-json_path::json_path(const std::string& text)
+json_path::json_path(const char* text)
 {
    //parse text to Json
    m_value = nlohmann::json::parse(text);
-
-
 }
 
-nlohmann::json json_path::find(const std::string& search)
+json_path::json_path(const nlohmann::json& object)
+{
+   m_value = object;
+}
+
+nlohmann::json* json_path::find(const std::string& search)
 {
    m_line_stream.clear();
    m_line_stream.str(search);
 
    std::vector<TokenPair> tokens;
 
+   int ret;
    ETokenType token_type;
    std::string token;
    while(!m_line_stream.eof()) {
@@ -28,6 +32,15 @@ nlohmann::json json_path::find(const std::string& search)
          break;
 
       tokens.push_back(TokenPair(token_type, token));
+
+      if (token_type == eTokenSymbol && token == "[") {
+         ret = read_bracket_token(token);
+         if (ret == -1)
+            throw std::runtime_error("parse error.");
+
+         tokens.push_back(TokenPair(eTokenText, token));
+      }
+
    }
 
    if (tokens.empty()) {
@@ -37,7 +50,7 @@ nlohmann::json json_path::find(const std::string& search)
    //Execute...
 
    std::vector<TokenPair>::iterator it = tokens.begin();
-   nlohmann::json* current_object;
+   nlohmann::json* current_object = nullptr;
    nlohmann::json result;
 
    if (it->type == eTokenSymbol && it->token == "$") {
@@ -99,9 +112,7 @@ nlohmann::json json_path::find(const std::string& search)
 
    } while(it != tokens.end());
 
-   result = *current_object;
-
-   return result;
+   return current_object;
 }
 
 int json_path::read_text_token(std::string& result)

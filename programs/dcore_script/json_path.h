@@ -9,15 +9,17 @@
 #include <sstream>
 #include <json.hpp>
 
-//nlohmann::json
-
 
 class json_path
 {
 public:
-   json_path(const std::string& text);
+   json_path(const char* text);
+   json_path(const nlohmann::json& object);
 
-   nlohmann::json find(const std::string& search);
+   nlohmann::json* find(const std::string& search);
+
+   nlohmann::json& ref() { return m_value; }
+   const nlohmann::json& ref() const { return m_value; }
 
 private:
    enum ETokenType {
@@ -41,10 +43,10 @@ private:
    int read_bracket_token(std::string& result);
    bool is_number(const std::string& val);
 
+private:
+   nlohmann::json m_value;
 
    std::stringstream m_line_stream;
-
-   nlohmann::json m_value;
 };
 
 
