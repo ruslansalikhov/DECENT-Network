@@ -103,6 +103,10 @@ nlohmann::json* json_path::find(const std::string& search)
                ++it;
             }
          }
+         else {
+            throw std::runtime_error("unknown token or parse error.");
+
+         }
       }
       else {
          // ???

@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) //testing main
                         "  }\n"
                         "}" );
 
-   nlohmann::json* result = test.find("$.store.book[2].author");
+   nlohmann::json* result = test.find("$.store.book[254,56].author");
 
    std::string res = result->get<std::string>();
 
