@@ -105,7 +105,7 @@ namespace detail {
                                                 GRAPHENE_INITIAL_SHARE_SUPPLY});
       initial_state.initial_chain_id = fc::sha256::hash( "DECENT" );
 
-      return initial_state;
+      return initial_state; 
    }
 
    class application_impl : public net::node_delegate
@@ -114,6 +114,7 @@ namespace detail {
       fc::optional<fc::temp_file> _lock_file;
       bool _is_block_producer = false;
       bool _force_validate = false;
+      uint64_t _processed_transactions;
 
       void reset_p2p_node(const fc::path& data_dir)
       { try {
@@ -135,12 +136,14 @@ namespace detail {
 
          } else {
              vector<string> base_seeds_list = {
+                /*
                "seed1.decentgo.com:40000",
                "seed2.decentgo.com:40000", 
                "seed3.decentgo.com:40000",
                "52.10.121.79:40000",             // # liberosist (US) 
                "decent.agoric.systems:46023",    // # agoric.systems / robrigo (BR)
                "66.70.188.105:40000"             // # decentspace (CA)
+               */
             };
 
             seeds = base_seeds_list;
@@ -260,7 +263,8 @@ namespace detail {
 
       application_impl(application* self)
          : _self(self),
-           _chain_db(std::make_shared<chain::database>())
+           _chain_db(std::make_shared<chain::database>()),
+         _processed_transactions(0)
       {
       }
 
@@ -537,6 +541,8 @@ namespace detail {
                }
             }
 
+            std::cout << "Pushed block " << block_header::num_from_id(blk_msg.block_id) << std::endl;
+
             return result;
          } catch ( const graphene::chain::unlinkable_block_exception& e ) {
             // translate to a graphene::net exception
@@ -565,7 +571,7 @@ namespace detail {
             last_call = now;
             trx_count = 0;
          }
-
+         _processed_transactions++;
          _chain_db->push_transaction( transaction_message.trx );
       } FC_CAPTURE_AND_RETHROW( (transaction_message) ) }
 
@@ -1050,6 +1056,11 @@ void application::set_api_access_info(const string& username, api_access_info&& 
 bool application::is_finished_syncing() const
 {
    return my->_is_finished_syncing;
+}
+
+uint64_t application::get_processed_transactions() 
+{ 
+   return my->_processed_transactions; 
 }
 
 void graphene::app::application::add_plugin(const string& name, std::shared_ptr<graphene::app::abstract_plugin> p)

@@ -1163,7 +1163,7 @@ namespace graphene { namespace net { namespace detail {
             // this item has probably already fallen out of our peers' caches, we'll just ignore it.
             // this can happen during flooding, and the _items_to_fetch could otherwise get clogged
             // with a bunch of items that we'll never be able to request from any peer
-            wlog("Unable to fetch item ${item} before its likely expiration time, removing it from our list of items to fetch", ("item", item_iter->item));
+            elog("Unable to fetch item ${item} before its likely expiration time, removing it from our list of items to fetch", ("item", item_iter->item));
             item_iter = _items_to_fetch.erase(item_iter);
           }
           else
@@ -2866,10 +2866,12 @@ namespace graphene { namespace net { namespace detail {
           // if the peer has flooded us with transactions, don't add these to the inventory to prevent our
           // inventory list from growing without bound.  We try to allow fetching blocks even when
           // we've stopped fetching transactions.
-          if ((item_ids_inventory_message_received.item_type == graphene::net::trx_message_type &&
-               originating_peer->is_inventory_advertised_to_us_list_full_for_transactions()) ||
-              originating_peer->is_inventory_advertised_to_us_list_full())
-            break;
+           if ((item_ids_inventory_message_received.item_type == graphene::net::trx_message_type &&
+              originating_peer->is_inventory_advertised_to_us_list_full_for_transactions()) ||
+              originating_peer->is_inventory_advertised_to_us_list_full()) {
+              elog("List of inventory advertised to us is full.");
+              break;
+           }
           originating_peer->inventory_peer_advertised_to_us.insert(peer_connection::timestamped_item_id(advertised_item_id, fc::time_point::now()));
           if (!we_requested_this_item_from_a_peer)
           {
@@ -3825,6 +3827,7 @@ namespace graphene { namespace net { namespace detail {
           {
             trx_message transaction_message_to_process = message_to_process.as<trx_message>();
             dlog("passing message containing transaction ${trx} to client", ("trx", transaction_message_to_process.trx.id()));
+
             _delegate->handle_transaction(transaction_message_to_process);
           }
           else
@@ -5159,7 +5162,7 @@ namespace graphene { namespace net { namespace detail {
   void node::broadcast( const message& msg )
   {
     ilog("broadcast started");
-     edump((msg));
+     idump((msg));
     INVOKE_IN_IMPL(broadcast, msg);
   }
 

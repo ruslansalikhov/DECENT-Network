@@ -168,6 +168,7 @@ block_production_condition::block_production_condition_enum miner_plugin::block_
 {
    block_production_condition::block_production_condition_enum result;
    fc::mutable_variant_object capture;
+   static uint64_t lastTotalTrxs = 0;
    try
    {
       result = maybe_produce_block(capture);
@@ -186,7 +187,8 @@ block_production_condition::block_production_condition_enum miner_plugin::block_
    switch( result )
    {
       case block_production_condition::produced:
-         ilog("Generated block #${n} with timestamp ${t} at time ${c}", (capture));
+         ilog("Generated block #${n} with timestamp ${t} at time ${c} processed transactions ${trxs_delta} total ${trxs}", (capture)("trxs_delta", app().get_processed_transactions() - lastTotalTrxs)("trxs", app().get_processed_transactions()));
+         lastTotalTrxs = app().get_processed_transactions();
          break;
       case block_production_condition::not_synced:
          ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");

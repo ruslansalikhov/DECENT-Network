@@ -85,6 +85,7 @@ namespace graphene { namespace app {
          void set_api_access_info(const string& username, api_access_info&& permissions);
 
          bool is_finished_syncing()const;
+         uint64_t get_processed_transactions();
          /// Emitted when syncing finishes (is_finished_syncing will return true)
          boost::signals2::signal<void()> syncing_finished;
 
@@ -94,6 +95,7 @@ namespace graphene { namespace app {
 
          boost::program_options::options_description _cli_options;
          boost::program_options::options_description _cfg_options;
+         
    };
 
 } }
