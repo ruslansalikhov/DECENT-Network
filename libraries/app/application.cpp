@@ -136,14 +136,14 @@ namespace detail {
 
          } else {
              vector<string> base_seeds_list = {
-                /*
+                
                "seed1.decentgo.com:40000",
                "seed2.decentgo.com:40000", 
                "seed3.decentgo.com:40000",
                "52.10.121.79:40000",             // # liberosist (US) 
                "decent.agoric.systems:46023",    // # agoric.systems / robrigo (BR)
                "66.70.188.105:40000"             // # decentspace (CA)
-               */
+               
             };
 
             seeds = base_seeds_list;
@@ -541,7 +541,7 @@ namespace detail {
                }
             }
 
-            std::cout << "Pushed block " << block_header::num_from_id(blk_msg.block_id) << std::endl;
+            //std::cout << "Pushed block " << block_header::num_from_id(blk_msg.block_id) << std::endl;
 
             return result;
          } catch ( const graphene::chain::unlinkable_block_exception& e ) {
