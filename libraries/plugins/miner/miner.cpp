@@ -291,7 +291,7 @@ block_production_condition::block_production_condition_enum miner_plugin::maybe_
       );
 
    uint64_t trx_diff = (uint64_t)block.transactions.size();
-   _transactions_in_generated_blocks += diff;
+   _transactions_in_generated_blocks += trx_diff;
    capture("n", block.block_num())("t", block.timestamp)("c", now)("trx_diff", trx_diff)("trx_total", _transactions_in_generated_blocks);
    fc::async( [this,block](){ p2p_node().broadcast(net::block_message(block)); } );
 
