@@ -120,9 +120,7 @@ bool database::push_block(const signed_block &new_block, uint32_t skip, bool syn
       detail::without_pending_transactions( *this, std::move(_pending_tx),
       [&]()
       {
-         result = _push_block( new_block, sync_mode );
-         _transactions_in_new_blocks += new_block.transactions.size();
-            ilog("pushed new block #${n} with ${t} transactions total ${a}", ("n", block_header::num_from_id(new_block.id()))("t", new_block.transactions.size())("a", _transactions_in_new_blocks));
+         result = _push_block( new_block, sync_mode );       
       });
    });
    return result;

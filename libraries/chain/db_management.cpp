@@ -40,7 +40,6 @@ database::database()
 {
    initialize_indexes();
    initialize_evaluators();
-   _transactions_in_new_blocks = (uint64_t)0;
 }
 
 database::~database()
