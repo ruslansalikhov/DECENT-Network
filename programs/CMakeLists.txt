@@ -2,7 +2,11 @@ add_subdirectory( build_helpers )
 add_subdirectory( cli_wallet )
 add_subdirectory( account_generator )
 #add_subdirectory( account_creator )
-add_subdirectory( gui_wallet )
+
+if (DECENT_GUI_WALLET)
+    add_subdirectory( gui_wallet )
+endif()
+
 add_subdirectory( keys_generator )
 #add_subdirectory( genesis_util )
 add_subdirectory(decentd)
