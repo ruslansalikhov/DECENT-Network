@@ -136,14 +136,14 @@ namespace detail {
 
          } else {
              vector<string> base_seeds_list = {
-                
+                /*
                "seed1.decentgo.com:40000",
                "seed2.decentgo.com:40000", 
                "seed3.decentgo.com:40000",
                "45.76.205.241:40000",            // # liberosist (JP)
                "decent.agoric.systems:46023",    // # agoric.systems / robrigo (BR)
                "66.70.188.105:40000"             // # decentspace (CA)
-               
+               */
             };
 
             seeds = base_seeds_list;
