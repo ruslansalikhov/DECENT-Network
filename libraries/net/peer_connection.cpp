@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 #include <graphene/net/peer_connection.hpp>
 #include <graphene/net/exceptions.hpp>
 #include <graphene/net/config.hpp>
@@ -59,9 +60,10 @@ namespace graphene { namespace net
     {
       return message_to_send.data.size();
     }
+
     message peer_connection::virtual_queued_message::get_message(peer_connection_delegate* node)
     {
-      return node->get_message_for_item(item_to_send);
+       return node->get_message_for_item_optimized(item_to_send);
     }
 
     size_t peer_connection::virtual_queued_message::get_size_in_queue()

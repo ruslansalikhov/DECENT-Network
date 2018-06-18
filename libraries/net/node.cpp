@@ -31,6 +31,7 @@
 #include <iostream>
 #include <algorithm>
 #include <tuple>
+
 #include <boost/tuple/tuple.hpp>
 #include <boost/circular_buffer.hpp>
 
@@ -205,10 +206,10 @@ namespace graphene { namespace net {
     message blockchain_tied_message_cache::get_message( const message_hash_type& hash_of_message_to_lookup )
     {
       message_cache_container::index<message_hash_index>::type::const_iterator iter =
-         _message_cache.get<message_hash_index>().find(hash_of_message_to_lookup );
-      if( iter != _message_cache.get<message_hash_index>().end() )
+      _message_cache.get<message_hash_index>().find(hash_of_message_to_lookup);
+      if (iter != _message_cache.get<message_hash_index>().end())
         return iter->message_body;
-      FC_THROW_EXCEPTION(  fc::key_not_found_exception, "Requested message not in cache" );
+      FC_THROW_EXCEPTION(fc::key_not_found_exception, "Requested message not in cache");
     }
 
     const message* blockchain_tied_message_cache::get_message_ptr(const message_hash_type& hash_of_message_to_lookup)
@@ -764,6 +765,7 @@ namespace graphene { namespace net { namespace detail {
       void                       disable_peer_advertising();
       fc::variant_object         get_call_statistics() const;
       message                    get_message_for_item(const item_id& item) override;
+      message                    get_message_for_item_optimized(const item_id& item);
 
       fc::variant_object         network_get_info() const;
       fc::variant_object         network_get_usage_stats() const;
@@ -1119,10 +1121,11 @@ namespace graphene { namespace net { namespace detail {
       }
       return false;
     }
-
+//#define debug_out 1
     void node_impl::fetch_items_loop()
     {
       VERIFY_CORRECT_THREAD();
+      _retrigger_fetch_item_loop_promise = fc::promise<void>::ptr(new fc::promise<void>("graphene::net::retrigger_fetch_item_loop"));
       while (!_fetch_item_loop_done.canceled())
       {
         _items_to_fetch_updated = false;
@@ -1147,7 +1150,7 @@ namespace graphene { namespace net { namespace detail {
         typedef boost::multi_index_container<peer_and_items_to_fetch,
                                              boost::multi_index::indexed_by<boost::multi_index::ordered_unique<boost::multi_index::member<peer_and_items_to_fetch, peer_connection_ptr, &peer_and_items_to_fetch::peer> >,
                                                                             boost::multi_index::ordered_non_unique<boost::multi_index::tag<requested_item_count_index>,
-                                                                                                                   boost::multi_index::const_mem_fun<peer_and_items_to_fetch, size_t, &peer_and_items_to_fetch::number_of_items> > > > fetch_messages_to_send_set;
+                                                                            boost::multi_index::const_mem_fun<peer_and_items_to_fetch, size_t, &peer_and_items_to_fetch::number_of_items> > > > fetch_messages_to_send_set;
         fetch_messages_to_send_set items_by_peer;
 
         // initialize the fetch_messages_to_send with an empty set of items for all idle peers
@@ -1160,6 +1163,9 @@ namespace graphene { namespace net { namespace detail {
         {
           if (item_iter->timestamp < oldest_timestamp_to_fetch)
           {
+#ifdef debug_out
+             std::cout << "unable to fetch item: timestamp:" << item_iter->timestamp.sec_since_epoch() << "oldest_timestamp_to_fetch:" << oldest_timestamp_to_fetch.sec_since_epoch() << std::endl;
+#endif
             // this item has probably already fallen out of our peers' caches, we'll just ignore it.
             // this can happen during flooding, and the _items_to_fetch could otherwise get clogged
             // with a bunch of items that we'll never be able to request from any peer
@@ -1173,13 +1179,23 @@ namespace graphene { namespace net { namespace detail {
             for (auto peer_iter = items_by_peer.get<requested_item_count_index>().begin(); peer_iter != items_by_peer.get<requested_item_count_index>().end(); ++peer_iter)
             {
               const peer_connection_ptr& peer = peer_iter->peer;
+#ifdef debug_out
+              std::cout << "inside of for(auto peer_iter) sub-loo iteration" << std::endl;
+#endif
               // if they have the item and we haven't already decided to ask them for too many other items
               if (peer_iter->item_ids.size() < GRAPHENE_NET_MAX_ITEMS_PER_PEER_DURING_NORMAL_OPERATION &&
                   peer->inventory_peer_advertised_to_us.find(item_iter->item) != peer->inventory_peer_advertised_to_us.end())
               {
-                if (item_iter->item.item_type == graphene::net::trx_message_type && peer->is_transaction_fetching_inhibited())
-                  next_peer_unblocked_time = std::min(peer->transaction_fetching_inhibited_until, next_peer_unblocked_time);
-                else
+                 if (item_iter->item.item_type == graphene::net::trx_message_type && peer->is_transaction_fetching_inhibited()) {
+                    next_peer_unblocked_time = std::min(peer->transaction_fetching_inhibited_until, next_peer_unblocked_time);
+#ifdef debug_out
+                    if (next_peer_unblocked_time == peer->transaction_fetching_inhibited_until)
+                       std::cout << "next_peer_unblocked_time = peer->transaction_fetching_inhibited_until" << std::endl;
+                    else
+                       std::cout << "next_peer_unblocked_time = next_peer_unblocked_time" << std::endl;
+#endif
+                 }
+                 else
                 {
                   //dlog("requesting item ${hash} from peer ${endpoint}",
                   //     ("hash", iter->item.item_hash)("endpoint", peer->get_remote_endpoint()));
@@ -1187,12 +1203,24 @@ namespace graphene { namespace net { namespace detail {
                   peer->items_requested_from_peer.insert(peer_connection::item_to_time_map_type::value_type(item_id_to_fetch, fc::time_point::now()));
                   item_iter = _items_to_fetch.erase(item_iter);
                   item_fetched = true;
+#ifdef debug_out
+                  std::cout << "item fetched" << std::endl;
+#endif
                   items_by_peer.get<requested_item_count_index>().modify(peer_iter, [&item_id_to_fetch](peer_and_items_to_fetch& peer_and_items) {
                     peer_and_items.item_ids.push_back(item_id_to_fetch);
                   });
                   break;
                 }
-              }  
+              }
+              else {
+#ifdef debug_out
+                 if (peer_iter->item_ids.size() >= GRAPHENE_NET_MAX_ITEMS_PER_PEER_DURING_NORMAL_OPERATION) {
+                    std::cout << "peer_iter->item_ids.size() = " << peer_iter->item_ids.size() << "MORE than GRAPHENE_NET_MAX..." << std::endl;
+                 }
+                 if(peer->inventory_peer_advertised_to_us.find(item_iter->item) == peer->inventory_peer_advertised_to_us.end())
+                    std::cout << "NOT FOUND item" << std::endl;
+#endif
+              }
             }
             if (!item_fetched)
               ++item_iter;
@@ -1220,31 +1248,55 @@ namespace graphene { namespace net { namespace detail {
         items_by_peer.clear();
 
         if (!_items_to_fetch_updated)
-        {
-          _retrigger_fetch_item_loop_promise = fc::promise<void>::ptr(new fc::promise<void>("graphene::net::retrigger_fetch_item_loop"));
+        { 
+         // _retrigger_fetch_item_loop_promise = fc::promise<void>::ptr(new fc::promise<void>("graphene::net::retrigger_fetch_item_loop"));
           fc::microseconds time_until_retrigger = fc::microseconds::maximum();
           if (next_peer_unblocked_time != fc::time_point::maximum())
             time_until_retrigger = next_peer_unblocked_time - fc::time_point::now();
           try
           {
-            if (time_until_retrigger > fc::microseconds(0))
-              _retrigger_fetch_item_loop_promise->wait(time_until_retrigger);
+             if (time_until_retrigger > fc::microseconds(0)) {
+                _retrigger_fetch_item_loop_promise->wait_with_reset(time_until_retrigger);
+#ifdef debug_out
+                std::cout << "Time to retrigger fetch_items_loop():" << time_until_retrigger.count() << std::endl;
+#endif
+             }
+             else {
+#ifdef debug_out
+                std::cout << "Not retrigerred:" << std::endl;
+#endif
+             }
           }
           catch (const fc::timeout_exception&)
           {
             dlog("Resuming fetch_items_loop due to timeout -- one of our peers should no longer be throttled");
           }
-          _retrigger_fetch_item_loop_promise.reset();
+          //_retrigger_fetch_item_loop_promise.reset();
         }
+#ifdef debug_out
+        std::cout << "fetch_item_loop() iteration" << std::endl;
+#endif
       } // while (!canceled)
+#ifdef debug_out
+      std::cout << "fetch_items_loop() finished" << std::endl;
+#endif
     }
+
 
     void node_impl::trigger_fetch_items_loop()
     {
       VERIFY_CORRECT_THREAD();
+#ifdef debug_out
+      std::cout << "trigger_fetch_items_loop()" << std::endl;
+#endif
       _items_to_fetch_updated = true;
-      if( _retrigger_fetch_item_loop_promise )
-        _retrigger_fetch_item_loop_promise->set_value();
+      
+      if (_retrigger_fetch_item_loop_promise) {
+         _retrigger_fetch_item_loop_promise->set_value_and_reset();
+#ifdef debug_out
+         std::cout << "trigger_fetch_items_loop(), _retrigger_fetch_item_loop_promise->set_value()" << std::endl;
+#endif
+      }
     }
 
     void node_impl::advertise_inventory_loop()
@@ -2725,14 +2777,32 @@ namespace graphene { namespace net { namespace detail {
         return _message_cache.get_message(item.item_hash);
       }
       catch (fc::key_not_found_exception&)
-      {}
+      {
+      }
       try
       {
-        return _delegate->get_item(item);
       }
       catch (fc::key_not_found_exception&)
-      {}
+      {
+      }
       return item_not_available_message(item);
+    }
+
+    message node_impl::get_message_for_item_optimized(const item_id& item)
+    {
+       message* msg_ptr = (message*)_message_cache.get_message_ptr(item.item_hash);
+       if (msg_ptr) {
+          return *msg_ptr;
+       }
+       
+       try
+       {
+          return _delegate->get_item(item);
+       }
+       catch (fc::key_not_found_exception&)
+       {
+       }
+       return item_not_available_message(item);
     }
 
     void node_impl::on_fetch_items_message(peer_connection* originating_peer, const fetch_items_message& fetch_items_message_received)
