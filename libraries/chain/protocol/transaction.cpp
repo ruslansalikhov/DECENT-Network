@@ -370,7 +370,7 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
 void verify_authority1(const vector<operation>& ops, const public_key_type& sigs,
    const std::function<const authority*(account_id_type)>& get_active,
    const std::function<const authority*(account_id_type)>& get_owner,
-   uint32_t max_recursion_depth
+   uint32_t max_recursion_depth)
 {
    try {
       flat_set<account_id_type> required_active;
