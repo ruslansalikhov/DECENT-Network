@@ -1258,7 +1258,7 @@ namespace graphene { namespace net { namespace detail {
              if (time_until_retrigger > fc::microseconds(0)) {
                 _retrigger_fetch_item_loop_promise->wait_with_reset(time_until_retrigger);
 #ifdef debug_out
-                std::cout << "Time to retrigger fetch_items_loop():" << time_until_retrigger.count() << std::endl;
+                //std::cout << "Time to retrigger fetch_items_loop():" << time_until_retrigger.count() << std::endl;
 #endif
              }
              else {

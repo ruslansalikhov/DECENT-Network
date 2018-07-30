@@ -100,7 +100,7 @@ size_t stcp_socket::readsome( char* buffer, size_t len )
     } buffer_in_use_checker(_read_buffer_in_use);
 #endif
 
-    const size_t read_buffer_length = 16384;
+    const size_t read_buffer_length = 4096;
     if (!_read_buffer)
       _read_buffer.reset(new char[read_buffer_length], [](char* p){ delete[] p; });
 
