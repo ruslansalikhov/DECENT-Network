@@ -311,30 +311,27 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
    flat_set<account_id_type> required_owner;
    vector<authority> other;
 
-   //clock_t t0, t1, t2, t3, t4, t5, t6, t7;
-   clock_t t0 = clock();
-
    for( const auto& op : ops )
       operation_get_required_authorities( op, required_active, required_owner, other );
-   clock_t t1 = clock();
+   
    if( !allow_committee )
       GRAPHENE_ASSERT( required_active.find(GRAPHENE_MINER_ACCOUNT) == required_active.end(),
                        invalid_committee_approval, "Committee account may only propose transactions" );
-   clock_t t2 = clock();
+   
    sign_state s(sigs,get_active);
-   clock_t t3 = clock();
+   
    s.max_recursion = max_recursion_depth;
    for( auto& id : active_aprovals )
       s.approved_by.insert( id );
    for( auto& id : owner_approvals )
       s.approved_by.insert( id );
-   clock_t t4 = clock();
+   
 
    for( const auto& auth : other )
    {
       GRAPHENE_ASSERT( s.check_authority(&auth), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
    }
-   clock_t t5 = clock();
+   
    // fetch all of the top level authorities
    for( auto id : required_active )
    {
@@ -342,29 +339,19 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
                        s.check_authority(get_owner(id)), 
                        tx_missing_active_auth, "Missing Active Authority ${id}", ("id",id)("auth",*get_active(id))("owner",*get_owner(id)) );
    }
-   clock_t t6 = clock();
+   
    for( auto id : required_owner )
    {
       GRAPHENE_ASSERT( owner_approvals.find(id) != owner_approvals.end() ||
                        s.check_authority(get_owner(id)), 
                        tx_missing_owner_auth, "Missing Owner Authority ${id}", ("id",id)("auth",*get_owner(id)) );
    }
-   clock_t t7 = clock();
+   
    GRAPHENE_ASSERT(
       !s.remove_unused_signatures(),
       tx_irrelevant_sig,
       "Unnecessary signature(s) detected"
       );
-   td1 += t1 - t0;
-   td2 += t2 - t1;
-   td3 += t3 - t2;
-   td4 += t4 - t3;
-   td5 += t5 - t4;
-   td6 += t6 - t5;
-   td7 += t7 - t6;
-   
-
-   //printf("verify_authority: %i %i %i %i %i %i %i\r\n", td1, td2, td3, td4, td5, td6, td7);
 } FC_CAPTURE_AND_RETHROW( (ops)(sigs) ) }
 
 void verify_authority1(const vector<operation>& ops, const public_key_type& sigs,
@@ -377,31 +364,17 @@ void verify_authority1(const vector<operation>& ops, const public_key_type& sigs
       flat_set<account_id_type> required_owner;
       vector<authority> other;
 
-      //clock_t t0, t1, t2, t3, t4, t5, t6, t7;
-      //clock_t t0 = clock();
-
       for (const auto& op : ops)
          operation_get_required_authorities(op, required_active, required_owner, other);
-      //clock_t t1 = clock();
-      //if (!allow_committee)
-        // GRAPHENE_ASSERT(required_active.find(GRAPHENE_MINER_ACCOUNT) == required_active.end(),
-          //  invalid_committee_approval, "Committee account may only propose transactions");
-      //clock_t t2 = clock();
+      
       sign_state1 s(sigs, get_active);
-      //clock_t t3 = clock();
       s.max_recursion = max_recursion_depth;
-      /*
-      for (auto& id : active_aprovals)
-         s.approved_by.insert(id);
-      for (auto& id : owner_approvals)
-         s.approved_by.insert(id);*/
-      //clock_t t4 = clock();
-
+      
       for (const auto& auth : other)
       {
          GRAPHENE_ASSERT(s.check_authority(&auth), tx_missing_other_auth, "Missing Authority", ("auth", auth)("sigs", sigs));
       }
-      //clock_t t5 = clock();
+     
       // fetch all of the top level authorities
       for (auto id : required_active)
       {
@@ -409,30 +382,13 @@ void verify_authority1(const vector<operation>& ops, const public_key_type& sigs
             s.check_authority(get_owner(id)),
             tx_missing_active_auth, "Missing Active Authority ${id}", ("id", id)("auth", *get_active(id))("owner", *get_owner(id)));
       }
-      //clock_t t6 = clock();
+     
       for (auto id : required_owner)
       {
          GRAPHENE_ASSERT(//owner_approvals.find(id) != owner_approvals.end() ||
             s.check_authority(get_owner(id)),
             tx_missing_owner_auth, "Missing Owner Authority ${id}", ("id", id)("auth", *get_owner(id)));
       }
-      //clock_t t7 = clock();
-      /*
-      GRAPHENE_ASSERT(
-         !s.remove_unused_signatures(),
-         tx_irrelevant_sig,
-         "Unnecessary signature(s) detected"
-      );*/
-      /*
-      td1 += t1 - t0;
-      td2 += t2 - t1;
-      td3 += t3 - t2;
-      td4 += t4 - t3;
-      td5 += t5 - t4;
-      td6 += t6 - t5;
-      td7 += t7 - t6;
-      printf("verify_authority: %i %i %i %i %i %i %i\r\n", td1, td2, td3, td4, td5, td6, td7);
-      */
    } FC_CAPTURE_AND_RETHROW((ops)(sigs))
 }
 
@@ -519,9 +475,9 @@ void signed_transaction::verify_authority(
    uint32_t max_recursion )const
 { try {
    flat_set<public_key_type> sig_keys = get_signature_keys(chain_id);
-   if(sig_keys.size() == 1)
-      graphene::chain::verify_authority1(operations, *sig_keys.begin(), get_active, get_owner, max_recursion);
-   else
+   //if(sig_keys.size() == 1)
+     // graphene::chain::verify_authority1(operations, *sig_keys.begin(), get_active, get_owner, max_recursion);
+   //else
       graphene::chain::verify_authority( operations, sig_keys, get_active, get_owner, max_recursion );
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
