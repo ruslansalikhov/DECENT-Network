@@ -149,5 +149,11 @@ vector< variant > network_get_connected_peers();
  */
 transaction_id_type get_transaction_id( const signed_transaction& trx ) const;
 
+/**
+* @brief Exits cli_wallet application.
+* @ingroup WalletAPI_General
+*/
+void exit();
+
 
 #endif //DECENT_WALLET_GENERAL_H

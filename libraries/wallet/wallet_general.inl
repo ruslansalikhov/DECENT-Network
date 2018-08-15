@@ -186,3 +186,9 @@ transaction_id_type wallet_api::get_transaction_id( const signed_transaction& tr
 {
    return trx.id();
 }
+
+void wallet_api::exit()
+{
+   fc::async([=]() { std::raise(SIGINT); });
+   //std::raise(SIGTERM);
+}

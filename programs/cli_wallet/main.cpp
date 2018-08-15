@@ -310,9 +310,14 @@ int main( int argc, char** argv )
 
       if( !options.count( "daemon" ) )
       {
+         fc::set_signal_handler([=](int /*signal*/) {
+            elog("Caught SIGTERM attempting to exit cleanly");
+            wallet_cli->cancel();
+         }, SIGINT);
          wallet_cli->register_api( wapi );
          wallet_cli->start();
          wallet_cli->wait();
+         cout << "after wallet_cli->wait()\r\n";
       }
       else
       {
@@ -334,5 +339,6 @@ int main( int argc, char** argv )
       std::cout << e.to_detail_string() << "\n";
       return -1;
    }
+   cout << "exiting main()\r\n";
    return 0;
 }

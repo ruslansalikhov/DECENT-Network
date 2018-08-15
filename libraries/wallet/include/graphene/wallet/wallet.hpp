@@ -29,6 +29,8 @@
 #include <decent/encrypt/encryptionutils.hpp>
 #include <graphene/chain/transaction_detail_object.hpp>
 
+#include <csignal>
+
 
 using namespace graphene::app;
 using namespace graphene::chain;
@@ -403,6 +405,7 @@ FC_API( graphene::wallet::wallet_api,
         (network_add_nodes)
         (network_get_connected_peers)
         (get_transaction_id)
+        (exit)
 
         //Wallet file
         (list_my_accounts)
