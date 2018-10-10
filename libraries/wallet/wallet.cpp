@@ -696,6 +696,11 @@ public:
       return _wallet_filename;
    }
 
+   void set_wallet_filename(const string &wallet_filename)
+   {
+      _wallet_filename = wallet_filename;
+   }
+
    fc::ecc::private_key get_private_key(const public_key_type& id)const
    {
       auto it = _keys.find(id);
