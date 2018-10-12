@@ -1,20 +1,18 @@
 /* (c) 2016, 2017 DECENT Services. For details refers to LICENSE.txt */
 #pragma once
 
-#include <QObject>
-#include <QMouseEvent>
+#ifndef STDAFX_H
 #include <QEvent>
-#include <QWidget>
-#include <QLabel>
 #include <QTableWidget>
-#include <QString>
 #include <chrono>
 #include <vector>
 #include <atomic>
 
+#include <json.hpp>
 #include <decent/wallet_utility/wallet_utility.hpp>
 
-#include "json.hpp"
+class QTimer;
+#endif
 
 #include <numeric>
 #if defined( _MSC_VER )
@@ -65,9 +63,6 @@ delete msgBox;                                      \
    bool _b_condition_ = (condition); \
    Q_ASSERT(_b_condition_); \
 }
-
-class QEvent;
-class QTimer;
 
 namespace gui_wallet
 {
@@ -302,13 +297,10 @@ namespace gui_wallet
       bool                           _is_ascending = true;
    };
 
-
-
    // DCT stands for Digital Contex Actions
    namespace DCT {
       enum DIG_CONT_TYPES {GENERAL, BOUGHT, WAITING_DELIVERY};
    }
-
 
    struct SDigitalContent
    {
@@ -340,6 +332,4 @@ namespace gui_wallet
    QFont PaginationFont();
    QFont ProgressInfoFont();
    QFont MainFont();
-
 }
-

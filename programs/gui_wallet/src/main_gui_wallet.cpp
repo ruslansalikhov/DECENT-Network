@@ -1,27 +1,15 @@
 /* (c) 2016, 2017 DECENT Services. For details refers to LICENSE.txt */
-#include "stdafx.h"
 
-#ifndef _MSC_VER
-#include <QApplication>
-
-#include <QMessageBox>
-#include <QDir>
-#include <QFile>
-#include <QTextStream>
-
-#if NDEBUG
-//#define SET_LIBRARY_PATHS
-#endif
-
-#include <string>
+#ifndef STDAFX_H
+#include "../stdafx.h"
 #endif
 
 #include "gui_wallet_global.hpp"
 #include "mainwindow.hpp"
 
-#include <QTranslator>
-
-using std::string;
+#if NDEBUG
+//#define SET_LIBRARY_PATHS
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -35,7 +23,6 @@ int main(int argc, char* argv[])
       styleFile.close();
       app.setStyleSheet(styleSheet);
    }
-
 
    QTranslator* translator = new QTranslator();
    if (translator->load("decent_en", ":/translations/languages")) {
@@ -69,15 +56,12 @@ int main(int argc, char* argv[])
 
    QCoreApplication::setLibraryPaths(QStringList(pluginsDir.absolutePath()));
    QStringList paths = QCoreApplication::libraryPaths();
-
 #endif
 
    try {
-
-      qRegisterMetaType<string>( "std::string" );
+      qRegisterMetaType<std::string>( "std::string" );
       qRegisterMetaType<int64_t>( "int64_t" );
       app.setApplicationDisplayName("DECENT");
-
 
       aMainWindow.show();
       //aMainWindow.StartUpdateThread();
@@ -98,7 +82,3 @@ int main(int argc, char* argv[])
 
    return 0;
 }
-
-
-
-

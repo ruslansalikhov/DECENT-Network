@@ -1,58 +1,18 @@
 /* (c) 2016, 2017 DECENT Services. For details refers to LICENSE.txt */
-#include "stdafx.h"
+
+#ifndef STDAFX_H
+#include "../stdafx.h"
+#endif
 
 #include "gui_wallet_global.hpp"
 #include "richdialog.hpp"
 
-#ifndef _MSC_VER
-#include <QMessageBox>
-#include <QThread>
-#include <QDateTime>
-#include <QDate>
-#include <QTime>
-#include <QTimer>
-#include <QHeaderView>
-#include <QObject>
-#include <QHBoxLayout>
-#include <QVBoxLayout>
-#include <QLocale>
-#include <QApplication>
-#include <QFont>
-
-// used for running daemons
-//
-#include <graphene/miner/miner.hpp>
-#include <graphene/seeding/seeding.hpp>
-#include <graphene/account_history/account_history_plugin.hpp>
-#include <graphene/utilities/dirhelper.hpp>
-#include <graphene/messaging/messaging.hpp>
-
-#include <fc/exception/exception.hpp>
-#include <fc/log/console_appender.hpp>
-#include <fc/log/file_appender.hpp>
-#include <fc/log/logger.hpp>
-#include <fc/log/logger_config.hpp>
-#include <fc/filesystem.hpp>
-#include <fc/interprocess/signals.hpp>
-#include <fc/thread/thread.hpp>
-
-#include <decent/config/decent_log_config.hpp>
-
-#include <QProcess>
-#include <QDir>
-//
-// //
-#endif
-
-
 //#define DECENT_WITHOUT_DAEMON
 
-#include <signal.h>
+//#include <signal.h>
 
 int runDecentD(gui_wallet::BlockChainStartType type, fc::promise<void>::ptr& exit_promise);
 QProcess* run_ipfs_daemon(QObject* parent, const QString& app_dir);
-
-using  std::string;
 
 namespace gui_wallet
 {
@@ -82,7 +42,7 @@ uint64_t json_to_int64(nlohmann::json const& o)
    if (o.is_number())
       return o.get<uint64_t>();
    else
-      return std::stoll(o.get<string>());
+      return std::stoll(o.get<std::string>());
 }
 
 struct CalendarDuration
@@ -776,9 +736,9 @@ void Globals::clear()
    }
 }
 
-Asset Globals::asset(uint64_t amount, const string& symbol_id/* = string()*/)
+Asset Globals::asset(uint64_t amount, const std::string& symbol_id/* = string()*/)
 {
-   string str_symbol_id = symbol_id;
+   std::string str_symbol_id = symbol_id;
    if (str_symbol_id.empty())
       str_symbol_id = "1.3.0";
 
@@ -795,14 +755,14 @@ Asset Globals::asset(uint64_t amount, const string& symbol_id/* = string()*/)
    return ast_amount;
 }
 
-string Globals::runTask(string const& str_command)
+std::string Globals::runTask(std::string const& str_command)
 {
    return getWallet().RunTask(str_command);
 }
 
-nlohmann::json Globals::runTaskParse(string const& str_command)
+nlohmann::json Globals::runTaskParse(std::string const& str_command)
 {
-   string str_result = runTask(str_command);
+   std::string str_result = runTask(str_command);
    return nlohmann::json::parse(str_result);
 }
 
@@ -819,7 +779,7 @@ std::vector<Publisher> Globals::getPublishers()
 
       publisher.m_str_name = publishers[iIndex]["seeder"].get<std::string>();
       uint64_t iPrice = json_to_int64(publishers[iIndex]["price"]["amount"]);
-      string iSymbolId = publishers[iIndex]["price"]["asset_id"];
+      std::string iSymbolId = publishers[iIndex]["price"]["asset_id"];
       publisher.m_price = asset(iPrice, iSymbolId);
       publisher.m_storage_size = publishers[iIndex]["free_space"].get<int>();
    }
@@ -854,7 +814,7 @@ void Globals::setWalletError(std::string const& error)
    emit walletConnectionError(error);
 }
 
-std::string Globals::getAccountName(string const& accountId)
+std::string Globals::getAccountName(std::string const& accountId)
 {
    auto search = m_map_user_id_cache.find(accountId);
    if (search == m_map_user_id_cache.end())
@@ -901,11 +861,11 @@ void Globals::slot_updateAccountBalance()
       {
          Asset ast_balance = asset(0);
          for ( auto balance : allBalances ) {
-            if(balance["asset_id"].get<string>() == "1.3.0") {
+            if(balance["asset_id"].get<std::string>() == "1.3.0") {
                if( balance[ "amount" ].is_number())
                   ast_balance.m_amount = balance[ "amount" ].get<uint64_t>();
                else
-                  ast_balance.m_amount = std::stoll(balance[ "amount" ].get<string>());
+                  ast_balance.m_amount = std::stoll(balance[ "amount" ].get<std::string>());
             }
          }
          emit signal_updateAccountBalance(ast_balance);
@@ -1591,4 +1551,3 @@ QFont gui_wallet::MainFont()
    font.setPointSizeF(FontSize(12));
    return font;
 }
-
